@@ -305,7 +305,7 @@ func WithConnectionStatusChannel(connStatus chan ConnStatus) WakuNodeOption {
 }
 
 func buildConnMgr() *connmgr.BasicConnMgr {
-	mgr, err := connmgr.NewConnManager(200, 300)
+	mgr, err := connmgr.NewConnManager(200, 300, connmgr.WithGracePeriod(0))
 	if err != nil {
 		panic(err)
 	}
