@@ -80,7 +80,7 @@ type WakuNodeOption func(*WakuNodeParameters) error
 
 // Default options used in the libp2p node
 var DefaultWakuNodeOptions = []WakuNodeOption{
-	WithLogger(utils.Logger()),
+	WithLogger(utils.InitLogger("console")),
 	WithWakuRelay(),
 }
 
