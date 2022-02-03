@@ -1,12 +1,12 @@
 # BUILD IMAGE --------------------------------------------------------
-FROM golang:1.15-alpine as builder
+FROM golang:1.17-alpine as builder
 
 # Get build tools and required header files
 RUN apk add --no-cache build-base
 
 WORKDIR /app
 COPY . .
-
+ENV CGO_ENABLED=1
 # Build the final node binary
 RUN make -j$(nproc) build
 
