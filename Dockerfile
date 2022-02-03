@@ -6,7 +6,7 @@ RUN apk add --no-cache build-base
 
 WORKDIR /app
 COPY . .
-ENV CGO_ENABLED=1
+
 # Build the final node binary
 RUN make -j$(nproc) build
 
