@@ -135,7 +135,7 @@ func (w *WakuRelay) subscribe(topic string) (subs *pubsub.Subscription, err erro
 			return nil, err
 		}
 
-		sub, err = pubSubTopic.Subscribe()
+		sub, err = pubSubTopic.Subscribe(pubsub.WithBufferSize(1024))
 		if err != nil {
 			return nil, err
 		}
