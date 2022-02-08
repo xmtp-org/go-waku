@@ -236,7 +236,7 @@ func Execute(options Options) {
 			sub, err := wakuNode.Relay().SubscribeToTopic(ctx, nodeTopic)
 			failOnErr(err, "Error subscring to topic")
 			ctxWithCancel, cancel := context.WithCancel(ctx)
-			go readSub(sub, ctxWithCancel.Done())
+			go readSub(sub, ctxWithCancel)
 			defer cancel()
 		}
 	}
@@ -305,10 +305,10 @@ func Execute(options Options) {
 	}
 }
 
-func readSub(sub *relay.Subscription, quit <-chan struct{}) {
+func readSub(sub *relay.Subscription, ctx context.Context) {
 	for {
 		select {
-		case <-quit:
+		case <-ctx.Done():
 			utils.Logger().Info("Stopping read from subscription")
 			return
 		case <-sub.C:
