@@ -233,8 +233,10 @@ func Execute(options Options) {
 
 	if !options.Relay.Disable {
 		for _, nodeTopic := range options.Relay.Topics {
-			_, err := wakuNode.Relay().SubscribeToTopic(ctx, nodeTopic)
+			sub, err := wakuNode.Relay().SubscribeToTopic(ctx, nodeTopic)
 			failOnErr(err, "Error subscring to topic")
+			// Unregister from broadcaster. Otherwise this channel will fill until it blocks publishing
+			wakuNode.Broadcaster().Unregister(sub.C)
 		}
 	}
 
