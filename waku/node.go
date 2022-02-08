@@ -233,8 +233,9 @@ func Execute(options Options) {
 
 	if !options.Relay.Disable {
 		for _, nodeTopic := range options.Relay.Topics {
-			_, err := wakuNode.Relay().SubscribeToTopic(ctx, nodeTopic)
+			sub, err := wakuNode.Relay().SubscribeToTopic(ctx, nodeTopic)
 			failOnErr(err, "Error subscring to topic")
+			go readSub(sub)
 		}
 	}
 
@@ -299,6 +300,12 @@ func Execute(options Options) {
 	if options.UseDB {
 		err = db.Close()
 		failOnErr(err, "DBClose")
+	}
+}
+
+func readSub(sub *relay.Subscription) {
+	for {
+		<-sub.C
 	}
 }
 
