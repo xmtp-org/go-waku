@@ -113,6 +113,7 @@ type Options struct {
 	AdvertiseAddress string
 	ShowAddresses    bool
 	LogLevel         string
+	LogEncoding      string
 
 	Relay            RelayOptions
 	Store            StoreOptions

@@ -80,7 +80,7 @@ type WakuNodeOption func(*WakuNodeParameters) error
 
 // Default options used in the libp2p node
 var DefaultWakuNodeOptions = []WakuNodeOption{
-	WithLogger(utils.Logger()),
+	WithLogger(utils.InitLogger("console")),
 	WithWakuRelay(),
 }
 
@@ -304,10 +304,18 @@ func WithConnectionStatusChannel(connStatus chan ConnStatus) WakuNodeOption {
 	}
 }
 
+func buildConnMgr() *connmgr.BasicConnMgr {
+	mgr, err := connmgr.NewConnManager(200, 300, connmgr.WithGracePeriod(0))
+	if err != nil {
+		panic(err)
+	}
+	return mgr
+}
+
 // Default options used in the libp2p node
 var DefaultLibP2POptions = []libp2p.Option{
 	libp2p.DefaultTransports,
 	libp2p.UserAgent(clientId),
 	libp2p.EnableNATService(), // TODO: is this needed?)
-	libp2p.ConnectionManager(connmgr.NewConnManager(200, 300, 0)),
+	libp2p.ConnectionManager(buildConnMgr()),
 }
