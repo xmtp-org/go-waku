@@ -37,7 +37,7 @@ func TestWakuNode2(t *testing.T) {
 }
 
 func Test1100(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	hostAddr1, _ := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
@@ -79,23 +79,24 @@ func Test1100(t *testing.T) {
 	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
+
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTimer(30 * time.Second)
+		ticker := time.NewTimer(20 * time.Second)
 		defer ticker.Stop()
 
 		msgCnt := 0
 		for {
 			select {
 			case <-ticker.C:
-				if msgCnt != 1100 {
+				if msgCnt != 1200 {
 					require.Fail(t, "Timeout Sub1", msgCnt)
 				}
 			case <-sub1.C:
 				msgCnt++
-				if msgCnt == 1100 {
+				if msgCnt == 1200 {
 					return
 				}
 			}
@@ -105,19 +106,19 @@ func Test1100(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTimer(30 * time.Second)
+		ticker := time.NewTimer(20 * time.Second)
 		defer ticker.Stop()
 
 		msgCnt := 0
 		for {
 			select {
 			case <-ticker.C:
-				if msgCnt != 1100 {
+				if msgCnt != 1200 {
 					require.Fail(t, "Timeout Sub2", msgCnt)
 				}
 			case <-sub2.C:
 				msgCnt++
-				if msgCnt == 1100 {
+				if msgCnt == 1200 {
 					return
 				}
 			}
@@ -126,7 +127,7 @@ func Test1100(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 1; i <= 1100; i++ {
+		for i := 1; i <= 1300; i++ {
 			msg := createTestMsg(0)
 			msg.Payload = []byte(fmt.Sprint(i))
 			msg.Timestamp = int64(i)
