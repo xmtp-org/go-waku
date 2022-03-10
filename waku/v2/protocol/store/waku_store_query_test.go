@@ -184,7 +184,7 @@ func TestStoreQueryBackwardPagination(t *testing.T) {
 			Payload:      []byte{byte(i)},
 			ContentTopic: topic1,
 			Version:      0,
-			Timestamp:    utils.GetUnixEpoch(),
+			Timestamp:    utils.GetUnixEpoch() + int64(i),
 		}
 		_ = s.storeMessage(protocol.NewEnvelope(msg, pubsubTopic1))
 
