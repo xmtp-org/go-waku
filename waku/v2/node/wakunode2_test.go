@@ -91,12 +91,12 @@ func Test1100(t *testing.T) {
 		for {
 			select {
 			case <-ticker.C:
-				if msgCnt != 1200 {
+				if msgCnt != 1100 {
 					require.Fail(t, "Timeout Sub1", msgCnt)
 				}
 			case <-sub1.C:
 				msgCnt++
-				if msgCnt == 1200 {
+				if msgCnt == 1100 {
 					return
 				}
 			}
@@ -113,12 +113,12 @@ func Test1100(t *testing.T) {
 		for {
 			select {
 			case <-ticker.C:
-				if msgCnt != 1200 {
+				if msgCnt != 1100 {
 					require.Fail(t, "Timeout Sub2", msgCnt)
 				}
 			case <-sub2.C:
 				msgCnt++
-				if msgCnt == 1200 {
+				if msgCnt == 1100 {
 					return
 				}
 			}
@@ -131,9 +131,7 @@ func Test1100(t *testing.T) {
 			msg := createTestMsg(0)
 			msg.Payload = []byte(fmt.Sprint(i))
 			msg.Timestamp = int64(i)
-			if err := wakuNode2.Publish(ctx, msg); err != nil {
-				require.Fail(t, "Could not publish all messages")
-			}
+			go wakuNode2.Publish(ctx, msg)
 		}
 	}()
 
