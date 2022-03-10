@@ -155,9 +155,10 @@ func TestStoreQueryForwardPagination(t *testing.T) {
 
 	s := NewWakuStore(nil, nil, nil, 0, 0, tests.Logger())
 	for i := 0; i < 10; i++ {
-		msg := tests.CreateWakuMessage(topic1, utils.GetUnixEpoch())
+		msg := tests.CreateWakuMessage(topic1, utils.GetUnixEpoch()+int64(i))
 		msg.Payload = []byte{byte(i)}
-		_ = s.storeMessage(protocol.NewEnvelope(msg, pubsubTopic1))
+		err := s.storeMessage(protocol.NewEnvelope(msg, pubsubTopic1))
+		require.NoError(t, err)
 	}
 
 	response := s.FindMessages(&pb.HistoryQuery{
