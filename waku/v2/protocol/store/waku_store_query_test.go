@@ -130,9 +130,9 @@ func TestStoreQueryPubsubTopicAllMessages(t *testing.T) {
 	topic3 := "3"
 	pubsubTopic1 := "topic1"
 
-	msg1 := tests.CreateWakuMessage(topic1, utils.GetUnixEpoch())
-	msg2 := tests.CreateWakuMessage(topic2, utils.GetUnixEpoch())
-	msg3 := tests.CreateWakuMessage(topic3, utils.GetUnixEpoch())
+	msg1 := tests.CreateWakuMessage(topic1, 1)
+	msg2 := tests.CreateWakuMessage(topic2, 2)
+	msg3 := tests.CreateWakuMessage(topic3, 3)
 
 	s := NewWakuStore(nil, nil, nil, 0, 0, tests.Logger())
 	_ = s.storeMessage(protocol.NewEnvelope(msg1, pubsubTopic1))
