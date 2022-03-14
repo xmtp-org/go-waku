@@ -44,7 +44,7 @@ func TestWakuStoreProtocolQuery(t *testing.T) {
 	defer s2.Stop()
 
 	host2.Peerstore().AddAddr(host1.ID(), tests.GetHostAddress(host1), peerstore.PermanentAddrTTL)
-	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta3))
+	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta4))
 	require.NoError(t, err)
 
 	q := Query{
@@ -73,11 +73,11 @@ func TestWakuStoreProtocolNext(t *testing.T) {
 	topic1 := "1"
 	pubsubTopic1 := "topic1"
 
-	msg1 := tests.CreateWakuMessage(topic1, float64(1))
-	msg2 := tests.CreateWakuMessage(topic1, float64(2))
-	msg3 := tests.CreateWakuMessage(topic1, float64(3))
-	msg4 := tests.CreateWakuMessage(topic1, float64(4))
-	msg5 := tests.CreateWakuMessage(topic1, float64(5))
+	msg1 := tests.CreateWakuMessage(topic1, 1)
+	msg2 := tests.CreateWakuMessage(topic1, 2)
+	msg3 := tests.CreateWakuMessage(topic1, 3)
+	msg4 := tests.CreateWakuMessage(topic1, 4)
+	msg5 := tests.CreateWakuMessage(topic1, 5)
 
 	s1.MsgC <- protocol.NewEnvelope(msg1, pubsubTopic1)
 	s1.MsgC <- protocol.NewEnvelope(msg2, pubsubTopic1)
@@ -89,7 +89,7 @@ func TestWakuStoreProtocolNext(t *testing.T) {
 	require.NoError(t, err)
 
 	host2.Peerstore().AddAddr(host1.ID(), tests.GetHostAddress(host1), peerstore.PermanentAddrTTL)
-	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta3))
+	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta4))
 	require.NoError(t, err)
 
 	s2 := NewWakuStore(host2, nil, nil, 0, 0, tests.Logger())

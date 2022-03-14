@@ -132,6 +132,9 @@ func NewDiscoveryV5(host host.Host, ipAddr net.IP, tcpPort int, priv *ecdsa.Priv
 				// TODO: track https://github.com/status-im/nim-waku/issues/770 for improvements over validation func
 				return evaluateNode(&n)
 			},
+			V5Config: discover.V5Config{
+				ProtocolID: [6]byte{'d', '5', 'w', 'a', 'k', 'u'},
+			},
 		},
 		udpAddr: &net.UDPAddr{
 			IP:   net.IPv4zero,
@@ -359,22 +362,25 @@ func (d *DiscoveryV5) iterate(ctx context.Context, iterator enode.Iterator, limi
 			break
 		}
 
-		address, err := utils.EnodeToMultiAddr(iterator.Node())
+		addresses, err := utils.Multiaddress(iterator.Node())
 		if err != nil {
 			d.log.Error(err)
 			continue
 		}
 
-		peerInfo, err := peer.AddrInfoFromP2pAddr(address)
+		peerAddrs, err := peer.AddrInfosFromP2pAddrs(addresses...)
 		if err != nil {
 			d.log.Error(err)
 			continue
 		}
 
-		d.peerCache.recs[peerInfo.ID] = peerRecord{
-			expire: time.Now().Unix() + 3600, // Expires in 1hr
-			peer:   *peerInfo,
+		for _, p := range peerAddrs {
+			d.peerCache.recs[p.ID] = peerRecord{
+				expire: time.Now().Unix() + 3600, // Expires in 1hr
+				peer:   p,
+			}
 		}
+
 	}
 
 	close(doneCh)

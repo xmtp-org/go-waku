@@ -2,8 +2,8 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"testing"
-	"time"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -22,11 +22,11 @@ func TestFindLastSeenMessage(t *testing.T) {
 	msg5 := protocol.NewEnvelope(tests.CreateWakuMessage("5", 5), "test")
 
 	s := NewWakuStore(nil, nil, nil, 0, 0, tests.Logger())
-	s.storeMessage(msg1)
-	s.storeMessage(msg3)
-	s.storeMessage(msg5)
-	s.storeMessage(msg2)
-	s.storeMessage(msg4)
+	_ = s.storeMessage(msg1)
+	_ = s.storeMessage(msg3)
+	_ = s.storeMessage(msg5)
+	_ = s.storeMessage(msg2)
+	_ = s.storeMessage(msg4)
 
 	require.Equal(t, msg5.Message().Timestamp, s.findLastSeen())
 }
@@ -48,9 +48,12 @@ func TestResume(t *testing.T) {
 			contentTopic = "2"
 		}
 
-		msg := protocol.NewEnvelope(tests.CreateWakuMessage(contentTopic, float64(time.Duration(i)*time.Second)), "test")
-		s1.storeMessage(msg)
+		wakuMessage := tests.CreateWakuMessage(contentTopic, int64(i+1))
+		msg := protocol.NewEnvelope(wakuMessage, "test")
+		_ = s1.storeMessage(msg)
 	}
+
+	fmt.Println(s1.messageQueue.messages[9].msg.Timestamp, s1.messageQueue.messages[9].msg.ContentTopic, "????????????????")
 
 	host2, err := libp2p.New(libp2p.DefaultTransports, libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"))
 	require.NoError(t, err)
@@ -60,7 +63,7 @@ func TestResume(t *testing.T) {
 	defer s2.Stop()
 
 	host2.Peerstore().AddAddr(host1.ID(), tests.GetHostAddress(host1), peerstore.PermanentAddrTTL)
-	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta3))
+	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta4))
 	require.NoError(t, err)
 
 	msgCount, err := s2.Resume(ctx, "test", []peer.ID{host1.ID()})
@@ -91,9 +94,9 @@ func TestResumeWithListOfPeers(t *testing.T) {
 	s1.Start(ctx)
 	defer s1.Stop()
 
-	msg0 := &pb.WakuMessage{Payload: []byte{1, 2, 3}, ContentTopic: "2", Version: 0, Timestamp: float64(0 * time.Second)}
+	msg0 := &pb.WakuMessage{Payload: []byte{1, 2, 3}, ContentTopic: "2", Version: 0, Timestamp: 0}
 
-	s1.storeMessage(protocol.NewEnvelope(msg0, "test"))
+	_ = s1.storeMessage(protocol.NewEnvelope(msg0, "test"))
 
 	host2, err := libp2p.New(libp2p.DefaultTransports, libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"))
 	require.NoError(t, err)
@@ -103,7 +106,7 @@ func TestResumeWithListOfPeers(t *testing.T) {
 	defer s2.Stop()
 
 	host2.Peerstore().AddAddr(host1.ID(), tests.GetHostAddress(host1), peerstore.PermanentAddrTTL)
-	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta3))
+	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta4))
 	require.NoError(t, err)
 
 	msgCount, err := s2.Resume(ctx, "test", []peer.ID{invalidHost.ID(), host1.ID()})
@@ -124,9 +127,9 @@ func TestResumeWithoutSpecifyingPeer(t *testing.T) {
 	s1.Start(ctx)
 	defer s1.Stop()
 
-	msg0 := &pb.WakuMessage{Payload: []byte{1, 2, 3}, ContentTopic: "2", Version: 0, Timestamp: float64(0 * time.Second)}
+	msg0 := &pb.WakuMessage{Payload: []byte{1, 2, 3}, ContentTopic: "2", Version: 0, Timestamp: 0}
 
-	s1.storeMessage(protocol.NewEnvelope(msg0, "test"))
+	_ = s1.storeMessage(protocol.NewEnvelope(msg0, "test"))
 
 	host2, err := libp2p.New(libp2p.DefaultTransports, libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"))
 	require.NoError(t, err)
@@ -136,7 +139,7 @@ func TestResumeWithoutSpecifyingPeer(t *testing.T) {
 	defer s2.Stop()
 
 	host2.Peerstore().AddAddr(host1.ID(), tests.GetHostAddress(host1), peerstore.PermanentAddrTTL)
-	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta3))
+	err = host2.Peerstore().AddProtocols(host1.ID(), string(StoreID_v20beta4))
 	require.NoError(t, err)
 
 	msgCount, err := s2.Resume(ctx, "test", []peer.ID{})
