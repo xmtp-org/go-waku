@@ -33,6 +33,13 @@ func TestWakuNode2(t *testing.T) {
 	require.NoError(t, err)
 }
 
+/*
+
+The test is flaky. Sometimes it gets through all 1100 messages in 2-3 seconds, sometimes it gets stuck anything from 65 to 900 after 20s. All messages publish without error, but not all messages are read. I don't quite know why, but it's obviously something serious we are going to want to get to the bottom of. Also seems to work more reliably on my super fast laptop than in CI, which is maybe a hint.
+
+I can bump the number of messages to 2k, and it will get stuck at a number > 1057, which is why I think it's a separate issue from the one I identified (which always got stuck at the exact same point).
+
+*/
 // func Test1100(t *testing.T) {
 // 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 // 	defer cancel()
