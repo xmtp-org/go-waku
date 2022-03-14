@@ -205,7 +205,7 @@ func TestWakuFilterPeerFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: find out how to eliminate this sleep
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
 	_, ok = node2Filter.subscribers.failedPeers[host1.ID()]
 	require.True(t, ok)
 
