@@ -12,15 +12,15 @@ import (
 
 type (
 	FilterSubscribeParameters struct {
-		host         host.Host
-		selectedPeer peer.ID
-		log          *zap.SugaredLogger
+		Host         host.Host
+		SelectedPeer peer.ID
+		Log          *zap.SugaredLogger
 	}
 
 	FilterSubscribeOption func(*FilterSubscribeParameters)
 
 	FilterParameters struct {
-		timeout time.Duration
+		Timeout time.Duration
 	}
 
 	Option func(*FilterParameters)
@@ -28,34 +28,34 @@ type (
 
 func WithTimeout(timeout time.Duration) Option {
 	return func(params *FilterParameters) {
-		params.timeout = timeout
+		params.Timeout = timeout
 	}
 }
 
 func WithPeer(p peer.ID) FilterSubscribeOption {
 	return func(params *FilterSubscribeParameters) {
-		params.selectedPeer = p
+		params.SelectedPeer = p
 	}
 }
 
 func WithAutomaticPeerSelection() FilterSubscribeOption {
 	return func(params *FilterSubscribeParameters) {
-		p, err := utils.SelectPeer(params.host, string(FilterID_v20beta1), params.log)
+		p, err := utils.SelectPeer(params.Host, string(FilterID_v20beta1), params.Log)
 		if err == nil {
-			params.selectedPeer = *p
+			params.SelectedPeer = *p
 		} else {
-			params.log.Info("Error selecting peer: ", err)
+			params.Log.Info("Error selecting peer: ", err)
 		}
 	}
 }
 
 func WithFastestPeerSelection(ctx context.Context) FilterSubscribeOption {
 	return func(params *FilterSubscribeParameters) {
-		p, err := utils.SelectPeerWithLowestRTT(ctx, params.host, string(FilterID_v20beta1), params.log)
+		p, err := utils.SelectPeerWithLowestRTT(ctx, params.Host, string(FilterID_v20beta1), params.Log)
 		if err == nil {
-			params.selectedPeer = *p
+			params.SelectedPeer = *p
 		} else {
-			params.log.Info("Error selecting peer: ", err)
+			params.Log.Info("Error selecting peer: ", err)
 		}
 	}
 }
