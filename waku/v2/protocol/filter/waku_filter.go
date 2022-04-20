@@ -56,6 +56,14 @@ type (
 	}
 )
 
+type IFilter interface {
+	Unsubscribe(ctx context.Context, contentFilter ContentFilter, peer peer.ID) error
+	UnsubscribeFilter(ctx context.Context, cf ContentFilter) error
+	Subscribe(ctx context.Context, f ContentFilter, opts ...FilterSubscribeOption) (filterID string, theFilter Filter, err error)
+	Stop()
+	MsgChannel() chan *protocol.Envelope
+}
+
 // NOTE This is just a start, the design of this protocol isn't done yet. It
 // should be direct payload exchange (a la req-resp), not be coupled with the
 // relay protocol.
@@ -421,4 +429,8 @@ func (wf *WakuFilter) UnsubscribeFilter(ctx context.Context, cf ContentFilter) e
 	}
 
 	return nil
+}
+
+func (wf *WakuFilter) MsgChannel() chan *protocol.Envelope {
+	return wf.MsgC
 }
