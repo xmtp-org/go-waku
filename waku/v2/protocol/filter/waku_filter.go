@@ -54,15 +54,14 @@ type (
 		filters     *FilterMap
 		subscribers *Subscribers
 	}
-)
 
-type IFilter interface {
-	Unsubscribe(ctx context.Context, contentFilter ContentFilter, peer peer.ID) error
-	UnsubscribeFilter(ctx context.Context, cf ContentFilter) error
-	Subscribe(ctx context.Context, f ContentFilter, opts ...FilterSubscribeOption) (filterID string, theFilter Filter, err error)
-	Stop()
-	MsgChannel() chan *protocol.Envelope
-}
+	IFilter interface {
+		UnsubscribeFilter(ctx context.Context, cf ContentFilter) error
+		Subscribe(ctx context.Context, f ContentFilter, opts ...FilterSubscribeOption) (filterID string, theFilter Filter, err error)
+		Stop()
+		MsgChannel() chan *protocol.Envelope
+	}
+)
 
 // NOTE This is just a start, the design of this protocol isn't done yet. It
 // should be direct payload exchange (a la req-resp), not be coupled with the

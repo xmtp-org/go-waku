@@ -75,7 +75,8 @@ type WakuNodeParameters struct {
 
 	connStatusC chan ConnStatus
 
-	storeFactory storeFactory
+	storeFactory  storeFactory
+	filterFactory filterFactory
 }
 
 type WakuNodeOption func(*WakuNodeParameters) error
@@ -250,6 +251,14 @@ func WithWakuStore(shouldStoreMessages bool, shouldResume bool) WakuNodeOption {
 func WithWakuStoreFactory(factory storeFactory) WakuNodeOption {
 	return func(params *WakuNodeParameters) error {
 		params.storeFactory = factory
+
+		return nil
+	}
+}
+
+func WithFilterFactory(factory filterFactory) WakuNodeOption {
+	return func(params *WakuNodeParameters) error {
+		params.filterFactory = factory
 
 		return nil
 	}
