@@ -46,7 +46,7 @@ type Peer struct {
 
 type storeFactory func(w *WakuNode) store.Store
 
-type filterFactory func(w *WakuNode) (filter.IFilter, error)
+type filterFactory func(w *WakuNode) (filter.Protocol, error)
 
 type WakuNode struct {
 	host host.Host
@@ -54,7 +54,7 @@ type WakuNode struct {
 	log  *zap.SugaredLogger
 
 	relay      *relay.WakuRelay
-	filter     filter.IFilter
+	filter     filter.Protocol
 	lightPush  *lightpush.WakuLightPush
 	rendezvous *rendezvous.RendezvousService
 	store      store.Store
@@ -92,7 +92,7 @@ func defaultStoreFactory(w *WakuNode) store.Store {
 	return store.NewWakuStore(w.host, w.swap, w.opts.messageProvider, w.opts.maxMessages, w.opts.maxDuration, w.log)
 }
 
-func defaultFilterFactory(w *WakuNode) (filter.IFilter, error) {
+func defaultFilterFactory(w *WakuNode) (filter.Protocol, error) {
 	return filter.NewWakuFilter(w.ctx, w.host, w.opts.isFilterFullNode, w.log, w.opts.filterOpts...)
 }
 
@@ -391,7 +391,7 @@ func (w *WakuNode) Store() store.Store {
 	return w.store
 }
 
-func (w *WakuNode) Filter() filter.IFilter {
+func (w *WakuNode) Filter() filter.Protocol {
 	return w.filter
 }
 

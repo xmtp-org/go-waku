@@ -55,7 +55,7 @@ type (
 		subscribers *Subscribers
 	}
 
-	IFilter interface {
+	Protocol interface {
 		UnsubscribeFilter(ctx context.Context, cf ContentFilter) error
 		Subscribe(ctx context.Context, f ContentFilter, opts ...FilterSubscribeOption) (filterID string, theFilter Filter, err error)
 		Stop()
