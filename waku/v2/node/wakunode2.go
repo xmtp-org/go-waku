@@ -46,13 +46,15 @@ type Peer struct {
 
 type storeFactory func(w *WakuNode) store.Store
 
+type filterFactory func(w *WakuNode) (filter.Protocol, error)
+
 type WakuNode struct {
 	host host.Host
 	opts *WakuNodeParameters
 	log  *zap.SugaredLogger
 
 	relay      *relay.WakuRelay
-	filter     *filter.WakuFilter
+	filter     filter.Protocol
 	lightPush  *lightpush.WakuLightPush
 	rendezvous *rendezvous.RendezvousService
 	store      store.Store
@@ -82,11 +84,16 @@ type WakuNode struct {
 	// receiving connection status notifications
 	connStatusChan chan ConnStatus
 
-	storeFactory storeFactory
+	storeFactory  storeFactory
+	filterFactory filterFactory
 }
 
 func defaultStoreFactory(w *WakuNode) store.Store {
 	return store.NewWakuStore(w.host, w.swap, w.opts.messageProvider, w.opts.maxMessages, w.opts.maxDuration, w.log)
+}
+
+func defaultFilterFactory(w *WakuNode) (filter.Protocol, error) {
+	return filter.NewWakuFilter(w.ctx, w.host, w.opts.isFilterFullNode, w.log, w.opts.filterOpts...)
 }
 
 func New(ctx context.Context, opts ...WakuNodeOption) (*WakuNode, error) {
@@ -148,6 +155,12 @@ func New(ctx context.Context, opts ...WakuNodeOption) (*WakuNode, error) {
 		w.storeFactory = params.storeFactory
 	} else {
 		w.storeFactory = defaultStoreFactory
+	}
+
+	if params.filterFactory != nil {
+		w.filterFactory = params.filterFactory
+	} else {
+		w.filterFactory = defaultFilterFactory
 	}
 
 	if w.protocolEventSub, err = host.EventBus().Subscribe(new(event.EvtPeerProtocolsUpdated)); err != nil {
@@ -267,7 +280,7 @@ func (w *WakuNode) Start() error {
 	}
 
 	if w.opts.enableFilter {
-		filter, err := filter.NewWakuFilter(w.ctx, w.host, w.opts.isFilterFullNode, w.log, w.opts.filterOpts...)
+		filter, err := w.filterFactory(w)
 		if err != nil {
 			return err
 		}
@@ -317,7 +330,7 @@ func (w *WakuNode) Start() error {
 
 	if w.filter != nil {
 		w.log.Info("Subscribing filter to broadcaster")
-		w.bcaster.Register(w.filter.MsgC)
+		w.bcaster.Register(w.filter.MsgChannel())
 	}
 
 	return nil
@@ -378,7 +391,7 @@ func (w *WakuNode) Store() store.Store {
 	return w.store
 }
 
-func (w *WakuNode) Filter() *filter.WakuFilter {
+func (w *WakuNode) Filter() filter.Protocol {
 	return w.filter
 }
 
