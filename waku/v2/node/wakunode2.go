@@ -280,7 +280,7 @@ func (w *WakuNode) Start() error {
 	}
 
 	if w.opts.enableFilter {
-		filter, err := filter.NewWakuFilter(w.ctx, w.host, w.opts.isFilterFullNode, w.log, w.opts.filterOpts...)
+		filter, err := w.filterFactory(w)
 		if err != nil {
 			return err
 		}
