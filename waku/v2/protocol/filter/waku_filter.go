@@ -209,8 +209,12 @@ func (wf *WakuFilter) FilterListener() {
 					wf.log.Info("found matching contentTopic ", filter, msg)
 					// Do a message push to light node
 					wf.log.Info("pushing messages to light node: ", subscriber.peer)
-					g.Go(func() error {
-						return wf.pushMessage(subscriber, msg)
+					g.Go(func() (err error) {
+						err = wf.pushMessage(subscriber, msg)
+						if err != nil {
+							wf.log.Error(err)
+						}
+						return err
 					})
 					// Break if we have found a match
 					break
