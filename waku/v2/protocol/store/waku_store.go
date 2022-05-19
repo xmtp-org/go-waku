@@ -34,10 +34,19 @@ const StoreID_v20beta4 = libp2pProtocol.ID("/vac/waku/store/2.0.0-beta4")
 const MaxPageSize = 100
 
 var (
-	ErrNoPeersAvailable      = errors.New("no suitable remote peers")
-	ErrInvalidId             = errors.New("invalid request id")
+	// ErrNoPeersAvailable is returned when there are no store peers in the peer store
+	// that could be used to retrieve message history
+	ErrNoPeersAvailable = errors.New("no suitable remote peers")
+
+	// ErrInvalidId is returned when no RequestID is given
+	ErrInvalidId = errors.New("invalid request id")
+
+	// ErrFailedToResumeHistory is returned when the node attempted to retrieve historic
+	// messages to fill its own message history but for some reason it failed
 	ErrFailedToResumeHistory = errors.New("failed to resume the history")
-	ErrFailedQuery           = errors.New("failed to resolve the query")
+
+	// ErrFailedQuery is emitted when the query fails to return results
+	ErrFailedQuery = errors.New("failed to resolve the query")
 )
 
 func minOf(vars ...int) int {
@@ -296,6 +305,12 @@ func (store *WakuStore) fetchDBRecords(ctx context.Context) {
 		return
 	}
 
+	start := time.Now()
+	defer func() {
+		elapsed := time.Since(start)
+		store.log.Info(fmt.Sprintf("Store initialization took %s", elapsed))
+	}()
+
 	storedMessages, err := (store.msgProvider).GetAll()
 	if err != nil {
 		store.log.Error("could not load DBProvider messages", err)
@@ -310,9 +325,11 @@ func (store *WakuStore) fetchDBRecords(ctx context.Context) {
 		}
 
 		_ = store.addToMessageQueue(storedMessage.PubsubTopic, idx, storedMessage.Message)
-
-		metrics.RecordMessage(ctx, "stored", store.messageQueue.Length())
 	}
+
+	metrics.RecordMessage(ctx, "stored", store.messageQueue.Length())
+
+	store.log.Info(fmt.Sprintf("%d messages available in waku store", store.messageQueue.Length()))
 }
 
 func (store *WakuStore) addToMessageQueue(pubsubTopic string, idx *pb.Index, msg *pb.WakuMessage) error {

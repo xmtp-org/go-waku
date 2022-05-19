@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/status-im/go-waku/tests"
+	"github.com/status-im/go-waku/waku/v2/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,8 +24,8 @@ func TestFilterOption(t *testing.T) {
 	}
 
 	params := new(FilterSubscribeParameters)
-	params.Host = host
-	params.Log = tests.Logger()
+	params.host = host
+	params.log = utils.Logger()
 
 	for _, opt := range options {
 		opt(params)

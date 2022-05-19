@@ -17,6 +17,7 @@ import (
 	"github.com/status-im/go-waku/waku/v2/protocol/pb"
 )
 
+// KeyKind indicates the type of encryption to apply
 type KeyKind string
 
 const (
@@ -25,14 +26,14 @@ const (
 	None       KeyKind = "None"
 )
 
-// The message to encode
+// Payload contains the data of the message to encode
 type Payload struct {
 	Data    []byte   // Raw message payload
 	Padding []byte   // Used to align data size, since data size alone might reveal important metainformation.
 	Key     *KeyInfo // Contains the type of encryption to apply and the private key to use for signing the message
 }
 
-// The decoded payload of a received message.
+// DecodedPayload contains the data of the received message after decrypting it
 type DecodedPayload struct {
 	Data      []byte           // Decoded message payload
 	Padding   []byte           // Used to align data size, since data size alone might reveal important metainformation.
@@ -45,7 +46,6 @@ type KeyInfo struct {
 	SymKey  []byte            // If the encryption is Symmetric, a Symmetric key must be specified
 	PubKey  ecdsa.PublicKey   // If the encryption is Asymmetric, the public key of the message receptor must be specified
 	PrivKey *ecdsa.PrivateKey // Set a privkey if the message requires a signature
-
 }
 
 // Encode encodes a payload depending on the version parameter.
