@@ -25,7 +25,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p/config"
 
-	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
@@ -103,7 +102,7 @@ func Execute(options Options) {
 
 	var metricsServer *metrics.Server
 	if options.Metrics.Enable {
-		metricsServer = metrics.NewMetricsServer(options.Metrics.Address, options.Metrics.Port, logger.Sugar())
+		metricsServer = metrics.NewMetricsServer(options.Metrics.Address, options.Metrics.Port, utils.Logger())
 		go metricsServer.Start()
 	}
 
@@ -128,22 +127,29 @@ func Execute(options Options) {
 			}
 		}
 
-		nodeOpts = append(nodeOpts, node.WithAdvertiseAddress(advertiseAddr, options.EnableWS, options.WSPort))
+		nodeOpts = append(nodeOpts, node.WithAdvertiseAddress(advertiseAddr))
 	}
 
-	if options.EnableWS {
-		wsMa, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d/ws", options.WSAddress, options.WSPort))
-		nodeOpts = append(nodeOpts, node.WithMultiaddress([]multiaddr.Multiaddr{wsMa}))
-	}
-
-	if options.ShowAddresses {
-		printListeningAddresses(ctx, nodeOpts, options)
-		return
+	if options.Dns4DomainName != "" {
+		nodeOpts = append(nodeOpts, node.WithDns4Domain(options.Dns4DomainName))
 	}
 
 	libp2pOpts := node.DefaultLibP2POptions
 	if options.AdvertiseAddress == "" {
 		libp2pOpts = append(libp2pOpts, libp2p.NATPortMap()) // Attempt to open ports using uPNP for NATed hosts.)
+	}
+
+	if options.Websocket.Enable {
+		nodeOpts = append(nodeOpts, node.WithWebsockets(options.Websocket.Address, options.Websocket.Port))
+	}
+
+	if options.Websocket.Secure {
+		nodeOpts = append(nodeOpts, node.WithSecureWebsockets(options.Websocket.Address, options.Websocket.Port, options.Websocket.CertPath, options.Websocket.KeyPath))
+	}
+
+	if options.ShowAddresses {
+		printListeningAddresses(ctx, nodeOpts, options)
+		return
 	}
 
 	if options.UseDB {
@@ -181,7 +187,7 @@ func Execute(options Options) {
 	if options.Store.Enable {
 		nodeOpts = append(nodeOpts, node.WithWakuStoreAndRetentionPolicy(options.Store.ShouldResume, options.Store.RetentionMaxDaysDuration(), options.Store.RetentionMaxMessages))
 		if options.UseDB {
-			dbStore, err := persistence.NewDBStore(logger.Sugar(), persistence.WithDB(db), persistence.WithRetentionPolicy(options.Store.RetentionMaxMessages, options.Store.RetentionMaxDaysDuration()))
+			dbStore, err := persistence.NewDBStore(utils.Logger(), persistence.WithDB(db), persistence.WithRetentionPolicy(options.Store.RetentionMaxMessages, options.Store.RetentionMaxDaysDuration()))
 			failOnErr(err, "DBStore")
 			nodeOpts = append(nodeOpts, node.WithMessageProvider(dbStore))
 		} else {
@@ -197,6 +203,22 @@ func Execute(options Options) {
 		nodeOpts = append(nodeOpts, node.WithRendezvous(pubsub.WithDiscoveryOpts(discovery.Limit(45), discovery.TTL(time.Duration(20)*time.Second))))
 	}
 
+	var discoveredNodes []dnsdisc.DiscoveredNode
+	if options.DNSDiscovery.Enable {
+		if options.DNSDiscovery.URL != "" {
+			utils.Logger().Info("attempting DNS discovery with ", zap.String("URL", options.DNSDiscovery.URL))
+			nodes, err := dnsdisc.RetrieveNodes(ctx, options.DNSDiscovery.URL, dnsdisc.WithNameserver(options.DNSDiscovery.Nameserver))
+			if err != nil {
+				utils.Logger().Warn("dns discovery error ", zap.Error(err))
+			} else {
+				utils.Logger().Info("found dns entries ", zap.Any("qty", len(nodes)))
+				discoveredNodes = nodes
+			}
+		} else {
+			utils.Logger().Fatal("DNS discovery URL is required")
+		}
+	}
+
 	if options.DiscV5.Enable {
 		var bootnodes []*enode.Node
 		for _, addr := range options.DiscV5.Nodes.Value() {
@@ -206,6 +228,13 @@ func Execute(options Options) {
 			}
 			bootnodes = append(bootnodes, bootnode)
 		}
+
+		for _, n := range discoveredNodes {
+			if n.ENR != nil {
+				bootnodes = append(bootnodes, n.ENR)
+			}
+		}
+
 		nodeOpts = append(nodeOpts, node.WithDiscoveryV5(options.DiscV5.Port, bootnodes, options.DiscV5.AutoUpdate, pubsub.WithDiscoveryOpts(discovery.Limit(45), discovery.TTL(time.Duration(20)*time.Second))))
 	}
 
@@ -213,10 +242,10 @@ func Execute(options Options) {
 
 	failOnErr(err, "Wakunode")
 
-	addPeers(wakuNode, options.Rendezvous.Nodes.Value(), rendezvous.RendezvousID_v001)
-	addPeers(wakuNode, options.Store.Nodes.Value(), store.StoreID_v20beta4)
-	addPeers(wakuNode, options.LightPush.Nodes.Value(), lightpush.LightPushID_v20beta1)
-	addPeers(wakuNode, options.Filter.Nodes.Value(), filter.FilterID_v20beta1)
+	addPeers(wakuNode, options.Rendezvous.Nodes.Value(), string(rendezvous.RendezvousID_v001))
+	addPeers(wakuNode, options.Store.Nodes.Value(), string(store.StoreID_v20beta4))
+	addPeers(wakuNode, options.LightPush.Nodes.Value(), string(lightpush.LightPushID_v20beta1))
+	addPeers(wakuNode, options.Filter.Nodes.Value(), string(filter.FilterID_v20beta1))
 
 	if err = wakuNode.Start(); err != nil {
 		logger.Fatal(fmt.Errorf("could not start waku node, %w", err).Error())
@@ -234,9 +263,10 @@ func Execute(options Options) {
 
 	if !options.Relay.Enable {
 		for _, nodeTopic := range options.Relay.Topics.Value() {
+			nodeTopic := nodeTopic
 			sub, err := wakuNode.Relay().SubscribeToTopic(ctx, nodeTopic)
 			failOnErr(err, "Error subscring to topic")
-			wakuNode.Broadcaster().Unregister(sub.C)
+			wakuNode.Broadcaster().Unregister(&nodeTopic, sub.C)
 		}
 	}
 
@@ -249,33 +279,24 @@ func Execute(options Options) {
 		}(n)
 	}
 
-	if options.DNSDiscovery.Enable {
-		if options.DNSDiscovery.URL != "" {
-			logger.Info("attempting DNS discovery with ", zap.String("URL", options.DNSDiscovery.URL))
-			multiaddresses, err := dnsdisc.RetrieveNodes(ctx, options.DNSDiscovery.URL, dnsdisc.WithNameserver(options.DNSDiscovery.Nameserver))
-			if err != nil {
-				logger.Warn("dns discovery error ", zap.Error(err))
-			} else {
-				logger.Info("found dns entries ", zap.Any("multiaddresses", multiaddresses))
-				for _, m := range multiaddresses {
-					go func(ctx context.Context, m multiaddr.Multiaddr) {
-						ctx, cancel := context.WithTimeout(ctx, time.Duration(3)*time.Second)
-						defer cancel()
-						err = wakuNode.DialPeerWithMultiAddress(ctx, m)
-						if err != nil {
-							logger.Error("error dialing peer ", zap.Error(err))
-						}
-					}(ctx, m)
-				}
+	if len(discoveredNodes) != 0 {
+		for _, n := range discoveredNodes {
+			for _, m := range n.Addresses {
+				go func(ctx context.Context, m multiaddr.Multiaddr) {
+					ctx, cancel := context.WithTimeout(ctx, time.Duration(3)*time.Second)
+					defer cancel()
+					err = wakuNode.DialPeerWithMultiAddress(ctx, m)
+					if err != nil {
+						utils.Logger().Error("error dialing peer ", zap.Error(err))
+					}
+				}(ctx, m)
 			}
-		} else {
-			logger.Fatal("DNS discovery URL is required")
 		}
 	}
 
 	var rpcServer *rpc.WakuRpc
 	if options.RPCServer.Enable {
-		rpcServer = rpc.NewWakuRpc(wakuNode, options.RPCServer.Address, options.RPCServer.Port, logger.Sugar())
+		rpcServer = rpc.NewWakuRpc(wakuNode, options.RPCServer.Address, options.RPCServer.Port, options.RPCServer.Admin, options.RPCServer.Private, utils.Logger())
 		rpcServer.Start()
 	}
 
@@ -304,7 +325,7 @@ func Execute(options Options) {
 	}
 }
 
-func addPeers(wakuNode *node.WakuNode, addresses []string, protocol protocol.ID) {
+func addPeers(wakuNode *node.WakuNode, addresses []string, protocols ...string) {
 	for _, addrString := range addresses {
 		if addrString == "" {
 			continue
@@ -313,7 +334,7 @@ func addPeers(wakuNode *node.WakuNode, addresses []string, protocol protocol.ID)
 		addr, err := multiaddr.NewMultiaddr(addrString)
 		failOnErr(err, "invalid multiaddress")
 
-		_, err = wakuNode.AddPeer(addr, protocol)
+		_, err = wakuNode.AddPeer(addr, protocols...)
 		failOnErr(err, "error adding peer")
 	}
 }
@@ -419,8 +440,6 @@ func getPrivKey(options Options) (*ecdsa.PrivateKey, error) {
 }
 
 func printListeningAddresses(ctx context.Context, nodeOpts []node.WakuNodeOption, options Options) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	params := new(node.WakuNodeParameters)
 	for _, opt := range nodeOpts {
 		err := opt(params)

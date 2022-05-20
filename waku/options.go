@@ -92,6 +92,17 @@ type RPCServerOptions struct {
 	Enable  bool
 	Port    int
 	Address string
+	Admin   bool
+	Private bool
+}
+
+type WSOptions struct {
+	Enable   bool
+	Port     int
+	Address  string
+	Secure   bool
+	KeyPath  string
+	CertPath string
 }
 
 // Options contains all the available features and settings that can be
@@ -99,9 +110,7 @@ type RPCServerOptions struct {
 type Options struct {
 	Port             int
 	Address          string
-	EnableWS         bool
-	WSPort           int
-	WSAddress        string
+	Dns4DomainName   string
 	NodeKey          string
 	KeyFile          string
 	GenerateKey      bool
@@ -115,6 +124,7 @@ type Options struct {
 	LogLevel         string
 	LogEncoding      string
 
+	Websocket        WSOptions
 	Relay            RelayOptions
 	Store            StoreOptions
 	Swap             SwapOptions
