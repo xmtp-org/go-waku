@@ -21,7 +21,7 @@ func TestFindLastSeenMessage(t *testing.T) {
 	msg4 := protocol.NewEnvelope(tests.CreateWakuMessage("4", 4), "test")
 	msg5 := protocol.NewEnvelope(tests.CreateWakuMessage("5", 5), "test")
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
+	s := NewWakuStore(nil, nil, nil, 0, 0, utils.InitLogger("console").Sugar())
 	_ = s.storeMessage(msg1)
 	_ = s.storeMessage(msg3)
 	_ = s.storeMessage(msg5)
