@@ -92,7 +92,7 @@ func NewWakuFilter(ctx context.Context, host host.Host, isFullNode bool, log *za
 	wf.h = host
 	wf.isFullNode = isFullNode
 	wf.filters = NewFilterMap()
-	wf.subscribers = NewSubscribers(params.Timeout)
+	wf.subscribers = NewSubscribers(params.timeout)
 
 	wf.h.SetStreamHandlerMatch(FilterID_v20beta1, protocol.PrefixTextMatch(string(FilterID_v20beta1)), wf.onRequest)
 
@@ -237,8 +237,8 @@ func (wf *WakuFilter) FilterListener() {
 // and submit FilterRequest wrapped in FilterRPC
 func (wf *WakuFilter) requestSubscription(ctx context.Context, filter ContentFilter, opts ...FilterSubscribeOption) (subscription *FilterSubscription, err error) {
 	params := new(FilterSubscribeParameters)
-	params.Log = wf.log
-	params.Host = wf.h
+	params.log = wf.log
+	params.host = wf.h
 
 	optList := DefaultSubscribtionOptions()
 	optList = append(optList, opts...)
@@ -246,7 +246,7 @@ func (wf *WakuFilter) requestSubscription(ctx context.Context, filter ContentFil
 		opt(params)
 	}
 
-	if params.SelectedPeer == "" {
+	if params.selectedPeer == "" {
 		return nil, ErrNoPeersAvailable
 	}
 
@@ -256,7 +256,7 @@ func (wf *WakuFilter) requestSubscription(ctx context.Context, filter ContentFil
 	}
 
 	// We connect first so dns4 addresses are resolved (NewStream does not do it)
-	err = wf.h.Connect(ctx, wf.h.Peerstore().PeerInfo(params.SelectedPeer))
+	err = wf.h.Connect(ctx, wf.h.Peerstore().PeerInfo(params.selectedPeer))
 	if err != nil {
 		return
 	}
@@ -268,7 +268,7 @@ func (wf *WakuFilter) requestSubscription(ctx context.Context, filter ContentFil
 	}
 
 	var conn network.Stream
-	conn, err = wf.h.NewStream(ctx, params.SelectedPeer, FilterID_v20beta1)
+	conn, err = wf.h.NewStream(ctx, params.selectedPeer, FilterID_v20beta1)
 	if err != nil {
 		return
 	}
@@ -288,7 +288,7 @@ func (wf *WakuFilter) requestSubscription(ctx context.Context, filter ContentFil
 	}
 
 	subscription = new(FilterSubscription)
-	subscription.Peer = params.SelectedPeer
+	subscription.Peer = params.selectedPeer
 	subscription.RequestID = requestID
 
 	return

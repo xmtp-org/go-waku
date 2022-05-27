@@ -24,13 +24,13 @@ func TestFilterOption(t *testing.T) {
 	}
 
 	params := new(FilterSubscribeParameters)
-	params.Host = host
-	params.Log = utils.InitLogger("console").Sugar()
+	params.host = host
+	params.log = utils.InitLogger("console").Sugar()
 
 	for _, opt := range options {
 		opt(params)
 	}
 
-	require.Equal(t, host, params.Host)
-	require.NotNil(t, params.SelectedPeer)
+	require.Equal(t, host, params.host)
+	require.NotNil(t, params.selectedPeer)
 }
