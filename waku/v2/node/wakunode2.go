@@ -85,10 +85,6 @@ type WakuNode struct {
 	storeFactory storeFactory
 }
 
-func defaultFilterFactory(w *WakuNode) (filter.Protocol, error) {
-	return filter.NewWakuFilter(w.ctx, w.host, w.opts.isFilterFullNode, w.log, w.opts.filterOpts...)
-}
-
 func defaultStoreFactory(w *WakuNode) store.Store {
 	return store.NewWakuStore(w.host, w.swap, w.opts.messageProvider, w.opts.maxMessages, w.opts.maxDuration, w.log)
 }
@@ -348,7 +344,7 @@ func (w *WakuNode) Start() error {
 
 	if w.filter != nil {
 		w.log.Info("Subscribing filter to broadcaster")
-		w.bcaster.Register(w.filter.MsgC)
+		w.bcaster.Register(nil, w.filter.MsgC)
 	}
 
 	return nil
