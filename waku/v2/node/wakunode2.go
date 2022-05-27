@@ -46,8 +46,6 @@ type Peer struct {
 
 type storeFactory func(w *WakuNode) store.Store
 
-type filterFactory func(w *WakuNode) (filter.Protocol, error)
-
 type WakuNode struct {
 	host host.Host
 	opts *WakuNodeParameters
@@ -84,8 +82,7 @@ type WakuNode struct {
 	// receiving connection status notifications
 	connStatusChan chan ConnStatus
 
-	storeFactory  storeFactory
-	filterFactory filterFactory
+	storeFactory storeFactory
 }
 
 func defaultFilterFactory(w *WakuNode) (filter.Protocol, error) {
@@ -162,12 +159,6 @@ func New(ctx context.Context, opts ...WakuNodeOption) (*WakuNode, error) {
 		w.storeFactory = params.storeFactory
 	} else {
 		w.storeFactory = defaultStoreFactory
-	}
-
-	if params.filterFactory != nil {
-		w.filterFactory = params.filterFactory
-	} else {
-		w.filterFactory = defaultFilterFactory
 	}
 
 	if w.protocolEventSub, err = host.EventBus().Subscribe(new(event.EvtPeerProtocolsUpdated)); err != nil {
