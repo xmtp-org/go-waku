@@ -52,7 +52,7 @@ type WakuNode struct {
 	log  *zap.SugaredLogger
 
 	relay      *relay.WakuRelay
-	filter     filter.Protocol
+	filter     *filter.WakuFilter
 	lightPush  *lightpush.WakuLightPush
 	rendezvous *rendezvous.RendezvousService
 	store      store.Store
@@ -348,7 +348,7 @@ func (w *WakuNode) Start() error {
 
 	if w.filter != nil {
 		w.log.Info("Subscribing filter to broadcaster")
-		w.bcaster.Register(nil, w.filter.MsgChannel())
+		w.bcaster.Register(w.filter.MsgC)
 	}
 
 	return nil
@@ -415,7 +415,7 @@ func (w *WakuNode) Store() store.Store {
 	return w.store
 }
 
-func (w *WakuNode) Filter() filter.Protocol {
+func (w *WakuNode) Filter() *filter.WakuFilter {
 	return w.filter
 }
 
