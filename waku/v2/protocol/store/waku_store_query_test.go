@@ -43,7 +43,7 @@ func TestStoreQueryMultipleContentFilters(t *testing.T) {
 	msg2 := tests.CreateWakuMessage(topic2, 2)
 	msg3 := tests.CreateWakuMessage(topic3, 3)
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, tests.Logger())
+	s := NewWakuStore(nil, nil, nil, 0, 0, utils.InitLogger("console"))
 	var err error
 	err = s.storeMessage(protocol.NewEnvelope(msg1, defaultPubSubTopic))
 	require.NoError(t, err)

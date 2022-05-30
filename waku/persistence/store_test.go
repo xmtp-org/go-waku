@@ -33,7 +33,7 @@ func createIndex(digest []byte, receiverTime int64) *pb.Index {
 func TestDbStore(t *testing.T) {
 	db := NewMock()
 	option := WithDB(db)
-	store, err := NewDBStore(utils.InitLogger("console").Sugar(), option)
+	store, err := NewDBStore(utils.InitLogger("console"), option)
 	require.NoError(t, err)
 
 	res, err := store.GetAll()
