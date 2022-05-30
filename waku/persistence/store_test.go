@@ -10,12 +10,13 @@ import (
 	"github.com/status-im/go-waku/waku/v2/protocol/pb"
 	"github.com/status-im/go-waku/waku/v2/utils"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func NewMock() *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
-		utils.Logger().Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+		utils.Logger().Fatal("opening a stub database connection", zap.Error(err))
 	}
 
 	return db
@@ -32,7 +33,7 @@ func createIndex(digest []byte, receiverTime int64) *pb.Index {
 func TestDbStore(t *testing.T) {
 	db := NewMock()
 	option := WithDB(db)
-	store, err := NewDBStore(utils.InitLogger("console").Sugar(), option)
+	store, err := NewDBStore(utils.InitLogger("console"), option)
 	require.NoError(t, err)
 
 	res, err := store.GetAll()
