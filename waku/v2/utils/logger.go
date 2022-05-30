@@ -23,11 +23,11 @@ func SetLogLevel(level string) error {
 }
 
 // Logger creates a zap.Logger with some reasonable defaults
-func Logger() *zap.SugaredLogger {
+func Logger() *zap.Logger {
 	if log == nil {
 		InitLogger("console").Panic("Logger not yet initialized")
 	}
-	return log.Sugar()
+	return log
 }
 
 func InitLogger(logEncoding string) *zap.Logger {

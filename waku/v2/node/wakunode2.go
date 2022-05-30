@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/libp2p/go-libp2p"
 	"go.uber.org/zap"
 
@@ -24,6 +23,7 @@ import (
 	"go.opencensus.io/stats"
 
 	rendezvous "github.com/status-im/go-waku-rendezvous"
+	"github.com/status-im/go-waku/logging"
 	"github.com/status-im/go-waku/waku/try"
 	v2 "github.com/status-im/go-waku/waku/v2"
 	"github.com/status-im/go-waku/waku/v2/discv5"
@@ -49,7 +49,7 @@ type storeFactory func(w *WakuNode) store.Store
 type WakuNode struct {
 	host host.Host
 	opts *WakuNodeParameters
-	log  *zap.SugaredLogger
+	log  *zap.Logger
 
 	relay      *relay.WakuRelay
 	filter     *filter.WakuFilter
@@ -193,19 +193,19 @@ func (w *WakuNode) onAddrChange() {
 	for m := range w.addrChan {
 		ipStr, err := m.ValueForProtocol(ma.P_IP4)
 		if err != nil {
-			w.log.Error(fmt.Sprintf("could not extract ip from ma %s: %s", m, err.Error()))
+			w.log.Error("extracting ip from ma", logging.MultiAddrs("ma", m), zap.Error(err))
 			continue
 		}
 
 		portStr, err := m.ValueForProtocol(ma.P_TCP)
 		if err != nil {
-			w.log.Error(fmt.Sprintf("could not extract port from ma %s: %s", m, err.Error()))
+			w.log.Error("extracting port from ma", logging.MultiAddrs("ma", m), zap.Error(err))
 			continue
 		}
 
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
-			w.log.Error(fmt.Sprintf("could not convert port to int: %s", err.Error()))
+			w.log.Error("converting port to int", zap.Error(err))
 			continue
 		}
 
@@ -218,7 +218,7 @@ func (w *WakuNode) onAddrChange() {
 			if w.opts.enableDiscV5 {
 				err := w.discoveryV5.UpdateAddr(addr)
 				if err != nil {
-					w.log.Error(fmt.Sprintf("could not update DiscV5 address with IP %s:%d %s", addr.IP, addr.Port, err.Error()))
+					w.log.Error("updating DiscV5 address with IP", zap.Stringer("address", addr), zap.Error(err))
 					continue
 				}
 			}
@@ -227,15 +227,15 @@ func (w *WakuNode) onAddrChange() {
 }
 
 func (w *WakuNode) logAddress(addr ma.Multiaddr) {
-	w.log.Info("Listening on ", addr)
+	logger := w.log.With(logging.MultiAddrs("multiaddr", addr))
 
 	// TODO: make this optional depending on DNS Disc being enabled
 	if w.opts.privKey != nil {
 		enr, ip, err := utils.GetENRandIP(addr, w.wakuFlag, w.opts.privKey)
 		if err != nil {
-			w.log.Error("could not obtain ENR record from multiaddress", err)
+			logger.Error("obtaining ENR record from multiaddress", zap.Error(err))
 		} else {
-			w.log.Info(fmt.Sprintf("DNS: discoverable ENR for IP %s:  %s", ip, enr))
+			logger.Info("listening", logging.ENode("enr", enr), zap.Stringer("ip", ip))
 		}
 	}
 }
@@ -281,7 +281,7 @@ func (w *WakuNode) checkForAddressChanges() {
 
 // Start initializes all the protocols that were setup in the WakuNode
 func (w *WakuNode) Start() error {
-	w.log.Info("Version details ", "commit=", GitCommit)
+	w.log.Info("Version details ", zap.String("commit", GitCommit))
 
 	w.swap = swap.NewWakuSwap(w.log, []swap.SwapOption{
 		swap.WithMode(w.opts.swapMode),
@@ -445,11 +445,11 @@ func (w *WakuNode) Publish(ctx context.Context, msg *pb.WakuMessage) error {
 			if !w.lightPush.IsStarted() {
 				err = errors.New("not enought peers for relay and lightpush is not yet started")
 			} else {
-				w.log.Debug("publishing message via lightpush", hexutil.Encode(hash))
+				w.log.Debug("publishing message via lightpush", logging.HexBytes("hash", hash))
 				_, err = w.Lightpush().Publish(ctx, msg)
 			}
 		} else {
-			w.log.Debug("publishing message via relay", hexutil.Encode(hash))
+			w.log.Debug("publishing message via relay", logging.HexBytes("hash", hash))
 			_, err = w.Relay().Publish(ctx, msg)
 		}
 
@@ -548,7 +548,7 @@ func (w *WakuNode) startStore() {
 }
 
 func (w *WakuNode) addPeer(info *peer.AddrInfo, protocols ...string) error {
-	w.log.Info(fmt.Sprintf("Adding peer %s to peerstore", info.ID.Pretty()))
+	w.log.Info("adding peer to peerstore", logging.HostID("peer", info.ID))
 	w.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 	err := w.host.Peerstore().AddProtocols(info.ID, protocols...)
 	if err != nil {

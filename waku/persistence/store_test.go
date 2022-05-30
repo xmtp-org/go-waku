@@ -10,12 +10,13 @@ import (
 	"github.com/status-im/go-waku/waku/v2/protocol/pb"
 	"github.com/status-im/go-waku/waku/v2/utils"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func NewMock() *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
-		utils.Logger().Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+		utils.Logger().Fatal("opening a stub database connection", zap.Error(err))
 	}
 
 	return db
