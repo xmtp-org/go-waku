@@ -26,6 +26,7 @@ func SetLogLevel(level string) error {
 func Logger() *zap.Logger {
 	if log == nil {
 		InitLogger("console")
+		log.Warn("logger not yet initialized")
 	}
 	return log
 }
