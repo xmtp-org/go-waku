@@ -21,7 +21,7 @@ import (
 )
 
 func createHost(t *testing.T) (host.Host, int, *ecdsa.PrivateKey) {
-	utils.InitLogger("console")
+	utils.Logger()
 	privKey, err := gcrypto.GenerateKey()
 	require.NoError(t, err)
 

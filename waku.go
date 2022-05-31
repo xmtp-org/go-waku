@@ -363,6 +363,8 @@ func main() {
 				return err
 			}
 
+			utils.InitLogger(options.LogEncoding)
+
 			waku.Execute(options)
 			return nil
 		},

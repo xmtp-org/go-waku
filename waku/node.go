@@ -72,7 +72,6 @@ func freePort() (int, error) {
 
 // Execute starts a go-waku node with settings determined by the Options parameter
 func Execute(options Options) {
-	logger := utils.InitLogger(options.LogEncoding)
 	if options.GenerateKey {
 		if err := writePrivateKeyToFile(options.KeyFile, options.Overwrite); err != nil {
 			failOnErr(err, "nodekey error")
@@ -89,7 +88,7 @@ func Execute(options Options) {
 	p2pPrvKey := libp2pcrypto.Secp256k1PrivateKey(*prvKey)
 	id, err := peer.IDFromPublicKey((&p2pPrvKey).GetPublic())
 	failOnErr(err, "deriving peer ID from private key")
-	logger = logger.With(logging.HostID("node", id))
+	logger := utils.Logger().With(logging.HostID("node", id))
 
 	if options.DBPath == "" && options.UseDB {
 		failOnErr(errors.New("dbpath can't be null"), "")

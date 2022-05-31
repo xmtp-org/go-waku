@@ -27,7 +27,7 @@ func TestLightPushOption(t *testing.T) {
 
 	params := new(LightPushParameters)
 	params.host = host
-	params.log = utils.InitLogger("console")
+	params.log = utils.Logger()
 
 	for _, opt := range options {
 		opt(params)

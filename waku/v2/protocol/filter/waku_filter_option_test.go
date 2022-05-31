@@ -25,7 +25,7 @@ func TestFilterOption(t *testing.T) {
 
 	params := new(FilterSubscribeParameters)
 	params.host = host
-	params.log = utils.InitLogger("console")
+	params.log = utils.Logger()
 
 	for _, opt := range options {
 		opt(params)

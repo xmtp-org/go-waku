@@ -25,12 +25,13 @@ func SetLogLevel(level string) error {
 // Logger creates a zap.Logger with some reasonable defaults
 func Logger() *zap.Logger {
 	if log == nil {
-		InitLogger("console").Panic("Logger not yet initialized")
+		InitLogger("console")
+		log.Warn("logger not yet initialized")
 	}
 	return log
 }
 
-func InitLogger(logEncoding string) *zap.Logger {
+func InitLogger(logEncoding string) {
 	cfg := zap.Config{
 		Encoding:         logEncoding,
 		Level:            atom,
@@ -53,5 +54,4 @@ func InitLogger(logEncoding string) *zap.Logger {
 	}
 
 	log = logger.Named("gowaku")
-	return log
 }
