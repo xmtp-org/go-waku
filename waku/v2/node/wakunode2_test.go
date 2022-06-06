@@ -96,15 +96,16 @@ func Test5000(t *testing.T) {
 
 		ticker := time.NewTimer(20 * time.Second)
 		defer ticker.Stop()
-
+		var count int
 		for {
 			select {
 			case <-ticker.C:
-				require.Fail(t, "Timeout Sub1")
+				require.Fail(t, "Timeout Sub1", count)
 			case msg := <-sub1.C:
 				if bytes.Equal(msg.Message().Payload, maxMsgBytes) {
 					return
 				}
+				count++
 			}
 		}
 	}()
@@ -114,15 +115,16 @@ func Test5000(t *testing.T) {
 
 		ticker := time.NewTimer(20 * time.Second)
 		defer ticker.Stop()
-
+		var count int
 		for {
 			select {
 			case <-ticker.C:
-				require.Fail(t, "Timeout Sub2")
+				require.Fail(t, "Timeout Sub2", count)
 			case msg := <-sub2.C:
 				if bytes.Equal(msg.Message().Payload, maxMsgBytes) {
 					return
 				}
+				count++
 			}
 		}
 	}()
