@@ -138,7 +138,7 @@ func main() {
 			&cli.StringFlag{
 				Name:        "log-encoding",
 				Value:       "console",
-				Usage:       "Log encoding format. Either console or json",
+				Usage:       "Define the encoding used for the logs: console, json",
 				Destination: &options.LogEncoding,
 			},
 			&cli.BoolFlag{
