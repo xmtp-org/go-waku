@@ -136,7 +136,7 @@ func Test5000(t *testing.T) {
 			msg.Payload = int2Bytes(i)
 			msg.Timestamp = int64(i)
 			if err := wakuNode2.Publish(ctx, msg); err != nil {
-				require.Fail(t, "Could not publish all messages")
+				require.Fail(t, "Could not publish all messages", i)
 			}
 		}
 	}()
