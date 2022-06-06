@@ -131,12 +131,19 @@ func Test5000(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
+		ticker := time.NewTimer(60 * time.Second)
+		defer ticker.Stop()
 		for i := 1; i <= maxMsgs; i++ {
-			msg := createTestMsg(0)
-			msg.Payload = int2Bytes(i)
-			msg.Timestamp = int64(i)
-			if err := wakuNode2.Publish(ctx, msg); err != nil {
-				require.Fail(t, "Could not publish all messages", i)
+			select {
+			case <-ticker.C:
+				require.Fail(t, "Timeout Publish", i)
+			default:
+				msg := createTestMsg(0)
+				msg.Payload = int2Bytes(i)
+				msg.Timestamp = int64(i)
+				if err := wakuNode2.Publish(ctx, msg); err != nil {
+					require.Fail(t, "Could not publish all messages", i)
+				}
 			}
 		}
 	}()
