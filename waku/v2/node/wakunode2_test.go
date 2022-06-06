@@ -48,7 +48,7 @@ func Test5000(t *testing.T) {
 	maxMsgs := 5000
 	maxMsgBytes := int2Bytes(maxMsgs)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	hostAddr1, _ := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
@@ -94,17 +94,18 @@ func Test5000(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTimer(20 * time.Second)
+		ticker := time.NewTimer(60 * time.Second)
 		defer ticker.Stop()
-
+		var count int
 		for {
 			select {
 			case <-ticker.C:
-				require.Fail(t, "Timeout Sub1")
+				require.Fail(t, "Timeout Sub1", count)
 			case msg := <-sub1.C:
 				if bytes.Equal(msg.Message().Payload, maxMsgBytes) {
 					return
 				}
+				count++
 			}
 		}
 	}()
@@ -112,29 +113,37 @@ func Test5000(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTimer(20 * time.Second)
+		ticker := time.NewTimer(60 * time.Second)
 		defer ticker.Stop()
-
+		var count int
 		for {
 			select {
 			case <-ticker.C:
-				require.Fail(t, "Timeout Sub2")
+				require.Fail(t, "Timeout Sub2", count)
 			case msg := <-sub2.C:
 				if bytes.Equal(msg.Message().Payload, maxMsgBytes) {
 					return
 				}
+				count++
 			}
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
+		ticker := time.NewTimer(60 * time.Second)
+		defer ticker.Stop()
 		for i := 1; i <= maxMsgs; i++ {
-			msg := createTestMsg(0)
-			msg.Payload = int2Bytes(i)
-			msg.Timestamp = int64(i)
-			if err := wakuNode2.Publish(ctx, msg); err != nil {
-				require.Fail(t, "Could not publish all messages")
+			select {
+			case <-ticker.C:
+				require.Fail(t, "Timeout Publish", i)
+			default:
+				msg := createTestMsg(0)
+				msg.Payload = int2Bytes(i)
+				msg.Timestamp = int64(i)
+				if err := wakuNode2.Publish(ctx, msg); err != nil {
+					require.Fail(t, "Could not publish all messages", i)
+				}
 			}
 		}
 	}()

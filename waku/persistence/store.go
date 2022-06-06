@@ -2,8 +2,14 @@ package persistence
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
 	"time"
 
+	"github.com/status-im/go-waku/waku/persistence/migrations"
+	"github.com/status-im/go-waku/waku/v2/protocol"
 	"github.com/status-im/go-waku/waku/v2/protocol/pb"
 	"github.com/status-im/go-waku/waku/v2/utils"
 	"go.uber.org/zap"
@@ -11,9 +17,16 @@ import (
 
 type MessageProvider interface {
 	GetAll() ([]StoredMessage, error)
-	Put(cursor *pb.Index, pubsubTopic string, message *pb.WakuMessage) error
+	Put(env *protocol.Envelope) error
+	Query(query *pb.HistoryQuery) ([]StoredMessage, error)
+	MostRecentTimestamp() (int64, error)
 	Stop()
 }
+
+var ErrInvalidCursor = errors.New("invalid cursor")
+
+// WALMode for sqlite.
+const WALMode = "wal"
 
 // DBStore is a MessageProvider that has a *sql.DB connection
 type DBStore struct {
@@ -23,6 +36,9 @@ type DBStore struct {
 
 	maxMessages int
 	maxDuration time.Duration
+
+	wg   sync.WaitGroup
+	quit chan struct{}
 }
 
 type StoredMessage struct {
@@ -69,6 +85,7 @@ func WithRetentionPolicy(maxMessages int, maxDuration time.Duration) DBOption {
 func NewDBStore(log *zap.Logger, options ...DBOption) (*DBStore, error) {
 	result := new(DBStore)
 	result.log = log.Named("dbstore")
+	result.quit = make(chan struct{})
 
 	for _, opt := range options {
 		err := opt(result)
@@ -77,7 +94,30 @@ func NewDBStore(log *zap.Logger, options ...DBOption) (*DBStore, error) {
 		}
 	}
 
-	err := result.createTable()
+	// Disable concurrent access as not supported by the driver
+	result.db.SetMaxOpenConns(1)
+
+	var seq string
+	var name string
+	var file string // file will be empty if DB is :memory"
+	err := result.db.QueryRow("PRAGMA database_list").Scan(&seq, &name, &file)
+	if err != nil {
+		return nil, err
+	}
+
+	// readers do not block writers and faster i/o operations
+	// https://www.sqlite.org/draft/wal.html
+	// must be set after db is encrypted
+	var mode string
+	err = result.db.QueryRow("PRAGMA journal_mode=WAL").Scan(&mode)
+	if err != nil {
+		return nil, err
+	}
+	if mode != WALMode && file != "" {
+		return nil, fmt.Errorf("unable to set journal_mode to WAL. actual mode %s", mode)
+	}
+
+	err = migrations.Migrate(result.db)
 	if err != nil {
 		return nil, err
 	}
@@ -87,28 +127,10 @@ func NewDBStore(log *zap.Logger, options ...DBOption) (*DBStore, error) {
 		return nil, err
 	}
 
-	return result, nil
-}
+	result.wg.Add(1)
+	go result.checkForOlderRecords(10 * time.Second) // is 10s okay?
 
-func (d *DBStore) createTable() error {
-	sqlStmt := `CREATE TABLE IF NOT EXISTS message (
-		id BLOB,
-		receiverTimestamp INTEGER NOT NULL,
-		senderTimestamp INTEGER NOT NULL,
-		contentTopic BLOB NOT NULL,
-		pubsubTopic BLOB NOT NULL,
-		payload BLOB,
-		version INTEGER NOT NULL DEFAULT 0,
-		CONSTRAINT messageIndex PRIMARY KEY (senderTimestamp, id, pubsubTopic)
-	) WITHOUT ROWID;
-	
-	CREATE INDEX IF NOT EXISTS message_senderTimestamp ON message(senderTimestamp);
-	CREATE INDEX IF NOT EXISTS message_receiverTimestamp ON message(receiverTimestamp);`
-	_, err := d.db.Exec(sqlStmt)
-	if err != nil {
-		return err
-	}
-	return nil
+	return result, nil
 }
 
 func (d *DBStore) cleanOlderRecords() error {
@@ -141,18 +163,42 @@ func (d *DBStore) cleanOlderRecords() error {
 	return nil
 }
 
+func (d *DBStore) checkForOlderRecords(t time.Duration) {
+	defer d.wg.Done()
+
+	ticker := time.NewTicker(t)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-d.quit:
+			return
+		case <-ticker.C:
+			err := d.cleanOlderRecords()
+			if err != nil {
+				d.log.Error("cleaning older records", zap.Error(err))
+			}
+		}
+	}
+}
+
 // Closes a DB connection
 func (d *DBStore) Stop() {
+	d.quit <- struct{}{}
+	d.wg.Wait()
 	d.db.Close()
 }
 
 // Inserts a WakuMessage into the DB
-func (d *DBStore) Put(cursor *pb.Index, pubsubTopic string, message *pb.WakuMessage) error {
+func (d *DBStore) Put(env *protocol.Envelope) error {
 	stmt, err := d.db.Prepare("INSERT INTO message (id, receiverTimestamp, senderTimestamp, contentTopic, pubsubTopic, payload, version) VALUES (?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec(cursor.Digest, cursor.ReceiverTime, message.Timestamp, message.ContentTopic, pubsubTopic, message.Payload, message.Version)
+
+	cursor := env.Index()
+	dbKey := NewDBKey(uint64(cursor.SenderTime), env.PubsubTopic(), env.Index().Digest)
+	_, err = stmt.Exec(dbKey.Bytes(), cursor.ReceiverTime, env.Message().Timestamp, env.Message().ContentTopic, env.PubsubTopic(), env.Message().Payload, env.Message().Version)
 	if err != nil {
 		return err
 	}
@@ -163,6 +209,124 @@ func (d *DBStore) Put(cursor *pb.Index, pubsubTopic string, message *pb.WakuMess
 	}
 
 	return nil
+}
+
+func (d *DBStore) Query(query *pb.HistoryQuery) ([]StoredMessage, error) {
+	start := time.Now()
+	defer func() {
+		elapsed := time.Since(start)
+		d.log.Info(fmt.Sprintf("Loading records from the DB took %s", elapsed))
+	}()
+
+	sqlQuery := `SELECT id, receiverTimestamp, senderTimestamp, contentTopic, pubsubTopic, payload, version 
+					 FROM message 
+					 %s
+					 ORDER BY senderTimestamp %s, pubsubTopic, id
+					 LIMIT ?`
+
+	var conditions []string
+	var parameters []interface{}
+
+	if query.PubsubTopic != "" {
+		conditions = append(conditions, "pubsubTopic = ?")
+		parameters = append(parameters, query.PubsubTopic)
+	}
+
+	if query.StartTime != 0 {
+		conditions = append(conditions, "id >= ?")
+		startTimeDBKey := NewDBKey(uint64(query.StartTime), "", []byte{})
+		parameters = append(parameters, startTimeDBKey.Bytes())
+
+	}
+
+	if query.EndTime != 0 {
+		conditions = append(conditions, "id <= ?")
+		endTimeDBKey := NewDBKey(uint64(query.EndTime), "", []byte{})
+		parameters = append(parameters, endTimeDBKey.Bytes())
+	}
+
+	if len(query.ContentFilters) != 0 {
+		var ctPlaceHolder []string
+		for _, ct := range query.ContentFilters {
+			if ct.ContentTopic != "" {
+				ctPlaceHolder = append(ctPlaceHolder, "?")
+				parameters = append(parameters, ct.ContentTopic)
+			}
+		}
+		conditions = append(conditions, "contentTopic IN ("+strings.Join(ctPlaceHolder, ", ")+")")
+	}
+
+	if query.PagingInfo.Cursor != nil {
+		var exists bool
+		cursorDBKey := NewDBKey(uint64(query.PagingInfo.Cursor.SenderTime), query.PagingInfo.Cursor.PubsubTopic, query.PagingInfo.Cursor.Digest)
+
+		err := d.db.QueryRow("SELECT EXISTS(SELECT 1 FROM message WHERE id = ?)",
+			cursorDBKey.Bytes(),
+		).Scan(&exists)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if exists {
+			eqOp := ">"
+			if query.PagingInfo.Direction == pb.PagingInfo_BACKWARD {
+				eqOp = "<"
+			}
+			conditions = append(conditions, fmt.Sprintf("id %s ?", eqOp))
+
+			parameters = append(parameters, cursorDBKey.Bytes())
+		} else {
+			return nil, ErrInvalidCursor
+		}
+	}
+
+	conditionStr := ""
+	if len(conditions) != 0 {
+		conditionStr = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	orderDirection := "ASC"
+	if query.PagingInfo.Direction == pb.PagingInfo_BACKWARD {
+		orderDirection = "DESC"
+	}
+
+	sqlQuery = fmt.Sprintf(sqlQuery, conditionStr, orderDirection)
+
+	stmt, err := d.db.Prepare(sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	parameters = append(parameters, query.PagingInfo.PageSize)
+	rows, err := stmt.Query(parameters...)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []StoredMessage
+	for rows.Next() {
+		record, err := d.GetStoredMessage(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, record)
+	}
+
+	defer rows.Close()
+
+	return result, nil
+}
+
+func (d *DBStore) MostRecentTimestamp() (int64, error) {
+	result := sql.NullInt64{}
+
+	err := d.db.QueryRow(`SELECT max(senderTimestamp) FROM message`).Scan(&result)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+	return result.Int64, nil
 }
 
 // Returns all the stored WakuMessages
@@ -183,32 +347,10 @@ func (d *DBStore) GetAll() ([]StoredMessage, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var id []byte
-		var receiverTimestamp int64
-		var senderTimestamp int64
-		var contentTopic string
-		var payload []byte
-		var version uint32
-		var pubsubTopic string
-
-		err = rows.Scan(&id, &receiverTimestamp, &senderTimestamp, &contentTopic, &pubsubTopic, &payload, &version)
+		record, err := d.GetStoredMessage(rows)
 		if err != nil {
-			d.log.Fatal("scanning next row", zap.Error(err))
+			return nil, err
 		}
-
-		msg := new(pb.WakuMessage)
-		msg.ContentTopic = contentTopic
-		msg.Payload = payload
-		msg.Timestamp = senderTimestamp
-		msg.Version = version
-
-		record := StoredMessage{
-			ID:           id,
-			PubsubTopic:  pubsubTopic,
-			ReceiverTime: receiverTimestamp,
-			Message:      msg,
-		}
-
 		result = append(result, record)
 	}
 
@@ -220,4 +362,35 @@ func (d *DBStore) GetAll() ([]StoredMessage, error) {
 	}
 
 	return result, nil
+}
+
+func (d *DBStore) GetStoredMessage(rows *sql.Rows) (StoredMessage, error) {
+	var id []byte
+	var receiverTimestamp int64
+	var senderTimestamp int64
+	var contentTopic string
+	var payload []byte
+	var version uint32
+	var pubsubTopic string
+
+	err := rows.Scan(&id, &receiverTimestamp, &senderTimestamp, &contentTopic, &pubsubTopic, &payload, &version)
+	if err != nil {
+		d.log.Error("scanning messages from db", zap.Error(err))
+		return StoredMessage{}, err
+	}
+
+	msg := new(pb.WakuMessage)
+	msg.ContentTopic = contentTopic
+	msg.Payload = payload
+	msg.Timestamp = senderTimestamp
+	msg.Version = version
+
+	record := StoredMessage{
+		ID:           id,
+		PubsubTopic:  pubsubTopic,
+		ReceiverTime: receiverTimestamp,
+		Message:      msg,
+	}
+
+	return record, nil
 }

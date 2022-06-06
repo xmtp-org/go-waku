@@ -138,7 +138,7 @@ func main() {
 			&cli.StringFlag{
 				Name:        "log-encoding",
 				Value:       "console",
-				Usage:       "Log encoding format. Either console or json",
+				Usage:       "Define the encoding used for the logs: console, json",
 				Destination: &options.LogEncoding,
 			},
 			&cli.BoolFlag{
@@ -363,6 +363,8 @@ func main() {
 				return err
 			}
 
+			// Set encoding for logs (console, json, ...)
+			// Note that libp2p reads the encoding from GOLOG_LOG_FMT env var.
 			utils.InitLogger(options.LogEncoding)
 
 			waku.Execute(options)

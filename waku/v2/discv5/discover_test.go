@@ -21,11 +21,10 @@ import (
 )
 
 func createHost(t *testing.T) (host.Host, int, *ecdsa.PrivateKey) {
-	utils.Logger()
 	privKey, err := gcrypto.GenerateKey()
 	require.NoError(t, err)
 
-	sPrivKey := libp2pcrypto.PrivKey((*libp2pcrypto.Secp256k1PrivateKey)(privKey))
+	sPrivKey := libp2pcrypto.PrivKey(utils.EcdsaPrivKeyToSecp256k1PrivKey(privKey))
 
 	port, err := tests.FindFreePort(t, "127.0.0.1", 3)
 	require.NoError(t, err)

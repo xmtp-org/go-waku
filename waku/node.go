@@ -85,8 +85,8 @@ func Execute(options Options) {
 	prvKey, err := getPrivKey(options)
 	failOnErr(err, "nodekey error")
 
-	p2pPrvKey := libp2pcrypto.Secp256k1PrivateKey(*prvKey)
-	id, err := peer.IDFromPublicKey((&p2pPrvKey).GetPublic())
+	p2pPrvKey := utils.EcdsaPrivKeyToSecp256k1PrivKey(prvKey)
+	id, err := peer.IDFromPublicKey(p2pPrvKey.GetPublic())
 	failOnErr(err, "deriving peer ID from private key")
 	logger := utils.Logger().With(logging.HostID("node", id))
 
@@ -95,10 +95,15 @@ func Execute(options Options) {
 	}
 
 	var db *sql.DB
-
 	if options.UseDB {
 		db, err = sqlite.NewDB(options.DBPath)
 		failOnErr(err, "Could not connect to DB")
+		logger.Debug("using database: ", zap.String("path", options.DBPath))
+
+	} else {
+		db, err = sqlite.NewDB(":memory:")
+		failOnErr(err, "Could not create in-memory DB")
+		logger.Debug("using in-memory database")
 	}
 
 	ctx := context.Background()
@@ -189,13 +194,9 @@ func Execute(options Options) {
 
 	if options.Store.Enable {
 		nodeOpts = append(nodeOpts, node.WithWakuStoreAndRetentionPolicy(options.Store.ShouldResume, options.Store.RetentionMaxDaysDuration(), options.Store.RetentionMaxMessages))
-		if options.UseDB {
-			dbStore, err := persistence.NewDBStore(logger, persistence.WithDB(db), persistence.WithRetentionPolicy(options.Store.RetentionMaxMessages, options.Store.RetentionMaxDaysDuration()))
-			failOnErr(err, "DBStore")
-			nodeOpts = append(nodeOpts, node.WithMessageProvider(dbStore))
-		} else {
-			nodeOpts = append(nodeOpts, node.WithMessageProvider(nil))
-		}
+		dbStore, err := persistence.NewDBStore(logger, persistence.WithDB(db), persistence.WithRetentionPolicy(options.Store.RetentionMaxMessages, options.Store.RetentionMaxDaysDuration()))
+		failOnErr(err, "DBStore")
+		nodeOpts = append(nodeOpts, node.WithMessageProvider(dbStore))
 	}
 
 	if options.LightPush.Enable {
@@ -303,7 +304,7 @@ func Execute(options Options) {
 		rpcServer.Start()
 	}
 
-	utils.Logger().Info("Node setup complete")
+	logger.Info("Node setup complete")
 
 	// Wait for a SIGINT or SIGTERM signal
 	ch := make(chan os.Signal, 1)
@@ -360,10 +361,12 @@ func loadPrivateKeyFromFile(path string) (*ecdsa.PrivateKey, error) {
 		return nil, err
 	}
 
-	privKey := (*ecdsa.PrivateKey)(p.(*libp2pcrypto.Secp256k1PrivateKey))
-	privKey.Curve = crypto.S256()
+	pBytes, err := p.Raw()
+	if err != nil {
+		return nil, err
+	}
 
-	return privKey, nil
+	return crypto.ToECDSA(pBytes)
 }
 
 func checkForPrivateKeyFile(path string, overwrite bool) error {
@@ -386,12 +389,7 @@ func generatePrivateKey() ([]byte, error) {
 		return nil, err
 	}
 
-	privKey := libp2pcrypto.PrivKey((*libp2pcrypto.Secp256k1PrivateKey)(key))
-
-	b, err := privKey.Raw()
-	if err != nil {
-		return nil, err
-	}
+	b := key.D.Bytes()
 
 	output := make([]byte, hex.EncodedLen(len(b)))
 	hex.Encode(output, b)

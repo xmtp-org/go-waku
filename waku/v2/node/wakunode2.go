@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	ws "github.com/libp2p/go-ws-transport"
+	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.opencensus.io/stats"
 
@@ -411,6 +411,7 @@ func (w *WakuNode) Store() store.Store {
 	return w.store
 }
 
+// Filter is used to access any operation related to Waku Filter protocol
 func (w *WakuNode) Filter() *filter.WakuFilter {
 	return w.filter
 }

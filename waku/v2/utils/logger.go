@@ -31,9 +31,9 @@ func Logger() *zap.Logger {
 	return log
 }
 
-func InitLogger(logEncoding string) {
+func InitLogger(encoding string) {
 	cfg := zap.Config{
-		Encoding:         logEncoding,
+		Encoding:         encoding,
 		Level:            atom,
 		OutputPaths:      []string{"stderr"},
 		ErrorOutputPaths: []string{"stderr"},
@@ -50,7 +50,7 @@ func InitLogger(logEncoding string) {
 
 	logger, err := cfg.Build()
 	if err != nil {
-		panic(fmt.Sprintf("could not create logger (%s)", err))
+		panic(fmt.Errorf("could not create logger: %s", err.Error()))
 	}
 
 	log = logger.Named("gowaku")

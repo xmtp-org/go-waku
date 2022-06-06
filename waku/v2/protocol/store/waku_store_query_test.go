@@ -17,9 +17,9 @@ func TestStoreQuery(t *testing.T) {
 	msg1 := tests.CreateWakuMessage(defaultContentTopic, utils.GetUnixEpoch())
 	msg2 := tests.CreateWakuMessage("2", utils.GetUnixEpoch())
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
-	_ = s.storeMessage(protocol.NewEnvelope(msg1, defaultPubSubTopic))
-	_ = s.storeMessage(protocol.NewEnvelope(msg2, defaultPubSubTopic))
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
+	_ = s.storeMessage(protocol.NewEnvelope(msg1, utils.GetUnixEpoch(), defaultPubSubTopic))
+	_ = s.storeMessage(protocol.NewEnvelope(msg2, utils.GetUnixEpoch(), defaultPubSubTopic))
 
 	response := s.FindMessages(&pb.HistoryQuery{
 		ContentFilters: []*pb.ContentFilter{
@@ -43,13 +43,13 @@ func TestStoreQueryMultipleContentFilters(t *testing.T) {
 	msg2 := tests.CreateWakuMessage(topic2, 2)
 	msg3 := tests.CreateWakuMessage(topic3, 3)
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
 	var err error
-	err = s.storeMessage(protocol.NewEnvelope(msg1, defaultPubSubTopic))
+	err = s.storeMessage(protocol.NewEnvelope(msg1, utils.GetUnixEpoch(), defaultPubSubTopic))
 	require.NoError(t, err)
-	err = s.storeMessage(protocol.NewEnvelope(msg2, defaultPubSubTopic))
+	err = s.storeMessage(protocol.NewEnvelope(msg2, utils.GetUnixEpoch(), defaultPubSubTopic))
 	require.NoError(t, err)
-	err = s.storeMessage(protocol.NewEnvelope(msg3, defaultPubSubTopic))
+	err = s.storeMessage(protocol.NewEnvelope(msg3, utils.GetUnixEpoch(), defaultPubSubTopic))
 	require.NoError(t, err)
 
 	response := s.FindMessages(&pb.HistoryQuery{
@@ -80,10 +80,10 @@ func TestStoreQueryPubsubTopicFilter(t *testing.T) {
 	msg2 := tests.CreateWakuMessage(topic2, utils.GetUnixEpoch())
 	msg3 := tests.CreateWakuMessage(topic3, utils.GetUnixEpoch())
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
-	_ = s.storeMessage(protocol.NewEnvelope(msg1, pubsubTopic1))
-	_ = s.storeMessage(protocol.NewEnvelope(msg2, pubsubTopic2))
-	_ = s.storeMessage(protocol.NewEnvelope(msg3, pubsubTopic2))
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
+	_ = s.storeMessage(protocol.NewEnvelope(msg1, utils.GetUnixEpoch(), pubsubTopic1))
+	_ = s.storeMessage(protocol.NewEnvelope(msg2, utils.GetUnixEpoch(), pubsubTopic2))
+	_ = s.storeMessage(protocol.NewEnvelope(msg3, utils.GetUnixEpoch(), pubsubTopic2))
 
 	response := s.FindMessages(&pb.HistoryQuery{
 		PubsubTopic: pubsubTopic1,
@@ -112,10 +112,10 @@ func TestStoreQueryPubsubTopicNoMatch(t *testing.T) {
 	msg2 := tests.CreateWakuMessage(topic2, utils.GetUnixEpoch())
 	msg3 := tests.CreateWakuMessage(topic3, utils.GetUnixEpoch())
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
-	_ = s.storeMessage(protocol.NewEnvelope(msg1, pubsubTopic2))
-	_ = s.storeMessage(protocol.NewEnvelope(msg2, pubsubTopic2))
-	_ = s.storeMessage(protocol.NewEnvelope(msg3, pubsubTopic2))
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
+	_ = s.storeMessage(protocol.NewEnvelope(msg1, utils.GetUnixEpoch(), pubsubTopic2))
+	_ = s.storeMessage(protocol.NewEnvelope(msg2, utils.GetUnixEpoch(), pubsubTopic2))
+	_ = s.storeMessage(protocol.NewEnvelope(msg3, utils.GetUnixEpoch(), pubsubTopic2))
 
 	response := s.FindMessages(&pb.HistoryQuery{
 		PubsubTopic: pubsubTopic1,
@@ -134,10 +134,10 @@ func TestStoreQueryPubsubTopicAllMessages(t *testing.T) {
 	msg2 := tests.CreateWakuMessage(topic2, 2)
 	msg3 := tests.CreateWakuMessage(topic3, 3)
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
-	_ = s.storeMessage(protocol.NewEnvelope(msg1, pubsubTopic1))
-	_ = s.storeMessage(protocol.NewEnvelope(msg2, pubsubTopic1))
-	_ = s.storeMessage(protocol.NewEnvelope(msg3, pubsubTopic1))
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
+	_ = s.storeMessage(protocol.NewEnvelope(msg1, utils.GetUnixEpoch(), pubsubTopic1))
+	_ = s.storeMessage(protocol.NewEnvelope(msg2, utils.GetUnixEpoch(), pubsubTopic1))
+	_ = s.storeMessage(protocol.NewEnvelope(msg3, utils.GetUnixEpoch(), pubsubTopic1))
 
 	response := s.FindMessages(&pb.HistoryQuery{
 		PubsubTopic: pubsubTopic1,
@@ -153,11 +153,11 @@ func TestStoreQueryForwardPagination(t *testing.T) {
 	topic1 := "1"
 	pubsubTopic1 := "topic1"
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
 	for i := 0; i < 10; i++ {
 		msg := tests.CreateWakuMessage(topic1, utils.GetUnixEpoch()+int64(i))
 		msg.Payload = []byte{byte(i)}
-		err := s.storeMessage(protocol.NewEnvelope(msg, pubsubTopic1))
+		err := s.storeMessage(protocol.NewEnvelope(msg, utils.GetUnixEpoch(), pubsubTopic1))
 		require.NoError(t, err)
 	}
 
@@ -178,7 +178,7 @@ func TestStoreQueryBackwardPagination(t *testing.T) {
 	topic1 := "1"
 	pubsubTopic1 := "topic1"
 
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
 	for i := 0; i < 10; i++ {
 		msg := &pb.WakuMessage{
 			Payload:      []byte{byte(i)},
@@ -186,7 +186,7 @@ func TestStoreQueryBackwardPagination(t *testing.T) {
 			Version:      0,
 			Timestamp:    utils.GetUnixEpoch() + int64(i),
 		}
-		_ = s.storeMessage(protocol.NewEnvelope(msg, pubsubTopic1))
+		_ = s.storeMessage(protocol.NewEnvelope(msg, utils.GetUnixEpoch(), pubsubTopic1))
 
 	}
 
@@ -204,7 +204,7 @@ func TestStoreQueryBackwardPagination(t *testing.T) {
 }
 
 func TestTemporalHistoryQueries(t *testing.T) {
-	s := NewWakuStore(nil, nil, nil, 0, 0, utils.Logger())
+	s := NewWakuStore(nil, nil, MemoryDB(t), 0, 0, utils.Logger())
 
 	var messages []*pb.WakuMessage
 	for i := 0; i < 10; i++ {
@@ -213,7 +213,7 @@ func TestTemporalHistoryQueries(t *testing.T) {
 			contentTopic = "2"
 		}
 		msg := tests.CreateWakuMessage(contentTopic, int64(i))
-		_ = s.storeMessage(protocol.NewEnvelope(msg, "test"))
+		_ = s.storeMessage(protocol.NewEnvelope(msg, utils.GetUnixEpoch(), "test"))
 		messages = append(messages, msg)
 	}
 
