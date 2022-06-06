@@ -411,6 +411,7 @@ func (w *WakuNode) Store() store.Store {
 	return w.store
 }
 
+// Filter is used to access any operation related to Waku Filter protocol
 func (w *WakuNode) Filter() *filter.WakuFilter {
 	return w.filter
 }
