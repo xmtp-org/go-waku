@@ -94,7 +94,7 @@ func Test5000(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTimer(20 * time.Second)
+		ticker := time.NewTimer(40 * time.Second)
 		defer ticker.Stop()
 		var count int
 		for {
@@ -113,7 +113,7 @@ func Test5000(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTimer(20 * time.Second)
+		ticker := time.NewTimer(40 * time.Second)
 		defer ticker.Stop()
 		var count int
 		for {
