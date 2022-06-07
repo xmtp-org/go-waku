@@ -8,6 +8,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/status-im/go-waku/logging"
+	"github.com/status-im/go-waku/waku/v2/metrics"
+	"go.opencensus.io/stats"
 	"go.uber.org/zap"
 )
 
@@ -17,7 +19,7 @@ const maxPublishAttempt = 5
 // startKeepAlive creates a go routine that periodically pings connected peers.
 // This is necessary because TCP connections are automatically closed due to inactivity,
 // and doing a ping will avoid this (with a small bandwidth cost)
-func (w *WakuNode) startKeepAlive(t time.Duration) {
+func (w *WakuNode) startKeepAlive(ctx context.Context, t time.Duration) {
 	go func() {
 		defer w.wg.Done()
 		w.log.Info("setting up ping protocol", zap.Duration("duration", t))
@@ -28,12 +30,14 @@ func (w *WakuNode) startKeepAlive(t time.Duration) {
 			case <-ticker.C:
 				// Network's peers collection,
 				// contains only currently active peers
-				for _, p := range w.host.Network().Peers() {
+				peers := w.host.Network().Peers()
+				for _, p := range peers {
 					if p != w.host.ID() {
 						w.wg.Add(1)
 						go w.pingPeer(p)
 					}
 				}
+				stats.Record(ctx, metrics.NetworkPeers.M(int64(len(peers))))
 			case <-w.quit:
 				return
 			}
