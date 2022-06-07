@@ -13,6 +13,7 @@ import (
 var (
 	Messages            = stats.Int64("node_messages", "Number of messages received", stats.UnitDimensionless)
 	Peers               = stats.Int64("peers", "Number of connected peers", stats.UnitDimensionless)
+	NetworkPeers        = stats.Int64("network_peers", "Current count of host network peers", stats.UnitDimensionless)
 	Dials               = stats.Int64("dials", "Number of peer dials", stats.UnitDimensionless)
 	StoreMessages       = stats.Int64("store_messages", "Number of historical messages", stats.UnitDimensionless)
 	FilterSubscriptions = stats.Int64("filter_subscriptions", "Number of filter subscriptions", stats.UnitDimensionless)
@@ -31,6 +32,12 @@ var (
 		Measure:     Peers,
 		Description: "Number of connected peers",
 		Aggregation: view.Sum(),
+	}
+	NetworkPeersView = &view.View{
+		Name:        "gowaku_network_peers",
+		Measure:     NetworkPeers,
+		Description: "Current count of host network peers",
+		Aggregation: view.LastValue(),
 	}
 	DialsView = &view.View{
 		Name:        "gowaku_peers_dials",

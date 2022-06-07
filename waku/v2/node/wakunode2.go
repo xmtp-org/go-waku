@@ -183,7 +183,7 @@ func New(ctx context.Context, opts ...WakuNodeOption) (*WakuNode, error) {
 
 	if w.opts.keepAliveInterval > time.Duration(0) {
 		w.wg.Add(1)
-		w.startKeepAlive(w.opts.keepAliveInterval)
+		w.startKeepAlive(ctx, w.opts.keepAliveInterval)
 	}
 
 	return w, nil
