@@ -175,7 +175,8 @@ func TestWakuFilterPeerFailure(t *testing.T) {
 	// Sleep to make sure the filter is subscribed
 	time.Sleep(2 * time.Second)
 
-	require.True(t, node2Filter.subscribers.IsFailedPeer(host1.ID()))
+	_, ok := node2Filter.subscribers.failedPeers[host1.ID()]
+	require.True(t, ok)
 
 	var wg sync.WaitGroup
 
@@ -186,7 +187,8 @@ func TestWakuFilterPeerFailure(t *testing.T) {
 		require.Equal(t, contentFilter.ContentTopics[0], env.Message().GetContentTopic())
 
 		// Failure is removed
-		require.False(t, node2Filter.subscribers.IsFailedPeer(host1.ID()))
+		_, ok := node2Filter.subscribers.failedPeers[host1.ID()]
+		require.False(t, ok)
 
 	}()
 
@@ -204,8 +206,9 @@ func TestWakuFilterPeerFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: find out how to eliminate this sleep
-	time.Sleep(1 * time.Second)
-	require.True(t, node2Filter.subscribers.IsFailedPeer(host1.ID()))
+	time.Sleep(3 * time.Second)
+	_, ok = node2Filter.subscribers.failedPeers[host1.ID()]
+	require.True(t, ok)
 
 	time.Sleep(3 * time.Second)
 
@@ -213,7 +216,8 @@ func TestWakuFilterPeerFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Second)
-	require.False(t, node2Filter.subscribers.IsFailedPeer(host1.ID())) // Failed peer has been removed
+	_, ok = node2Filter.subscribers.failedPeers[host1.ID()]
+	require.False(t, ok) // Failed peer has been removed
 
 	for subscriber := range node2Filter.subscribers.Items() {
 		if subscriber.peer == node1.h.ID() {
