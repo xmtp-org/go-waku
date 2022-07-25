@@ -1,7 +1,6 @@
 package filter
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -148,7 +147,6 @@ func (sub *Subscribers) RemoveContentFilters(peerID peer.ID, contentFilters []*p
 	// make sure we delete the subscriber
 	// if no more content filters left
 	for _, peerId := range peerIdsToRemove {
-		fmt.Println("Removing peer")
 		for i, s := range sub.subscribers {
 			if s.peer == peerId {
 				l := len(sub.subscribers) - 1
