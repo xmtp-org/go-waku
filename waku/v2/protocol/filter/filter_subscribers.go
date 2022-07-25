@@ -127,9 +127,9 @@ func (sub *Subscribers) RemoveContentFilters(peerID peer.ID, contentFilters []*p
 
 		// make sure we delete the content filter
 		// if no more topics are left
-		for i, contentFilter := range contentFilters {
+		for _, contentFilter := range contentFilters {
 			subCfs := subscriber.filter.ContentFilters
-			for _, cf := range subCfs {
+			for i, cf := range subCfs {
 				if cf.ContentTopic == contentFilter.ContentTopic {
 					l := len(subCfs) - 1
 					subCfs[l], subCfs[i] = subCfs[i], subCfs[l]

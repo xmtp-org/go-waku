@@ -26,7 +26,6 @@ func TestAppend(t *testing.T) {
 	var hasMatch bool
 	for range subs.Items(&contentTopic) {
 		hasMatch = true
-		break
 	}
 	assert.True(t, hasMatch)
 }
@@ -47,7 +46,6 @@ func TestRemove(t *testing.T) {
 	var hasMatch bool
 	for range subs.Items(&contentTopic) {
 		hasMatch = true
-		break
 	}
 	assert.False(t, hasMatch)
 }
@@ -66,4 +64,10 @@ func TestRemoveBogus(t *testing.T) {
 	// This will panic with this error:
 	// panic: runtime error: index out of range [1] with length 1
 	subs.RemoveContentFilters(peerId, []*pb.FilterRequest_ContentFilter{{ContentTopic: "does not exist"}, {ContentTopic: contentTopic}})
+
+	var hasMatch bool
+	for range subs.Items(&contentTopic) {
+		hasMatch = true
+	}
+	assert.False(t, hasMatch)
 }
