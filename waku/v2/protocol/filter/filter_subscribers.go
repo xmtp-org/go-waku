@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -120,7 +121,7 @@ func (sub *Subscribers) RemoveContentFilters(peerID peer.ID, contentFilters []*p
 
 	var peerIdsToRemove []peer.ID
 
-	for _, subscriber := range sub.subscribers {
+	for subIndex, subscriber := range sub.subscribers {
 		if subscriber.peer != peerID {
 			continue
 		}
@@ -129,13 +130,14 @@ func (sub *Subscribers) RemoveContentFilters(peerID peer.ID, contentFilters []*p
 		// if no more topics are left
 		for _, contentFilter := range contentFilters {
 			subCfs := subscriber.filter.ContentFilters
-			for i, cf := range subCfs {
-				if cf.ContentTopic == contentFilter.ContentTopic {
-					l := len(subCfs) - 1
-					subCfs[l], subCfs[i] = subCfs[i], subCfs[l]
-					subscriber.filter.ContentFilters = subCfs[:l]
+			var out []*pb.FilterRequest_ContentFilter
+			for _, cf := range subCfs {
+				if cf.ContentTopic != contentFilter.ContentTopic {
+					out = append(out, cf)
 				}
 			}
+			subscriber.filter.ContentFilters = out
+			sub.subscribers[subIndex] = subscriber
 		}
 
 		if len(subscriber.filter.ContentFilters) == 0 {
@@ -146,6 +148,7 @@ func (sub *Subscribers) RemoveContentFilters(peerID peer.ID, contentFilters []*p
 	// make sure we delete the subscriber
 	// if no more content filters left
 	for _, peerId := range peerIdsToRemove {
+		fmt.Println("Removing peer")
 		for i, s := range sub.subscribers {
 			if s.peer == peerId {
 				l := len(sub.subscribers) - 1

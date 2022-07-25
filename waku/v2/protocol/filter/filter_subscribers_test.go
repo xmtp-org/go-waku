@@ -62,10 +62,10 @@ func TestRemovePartial(t *testing.T) {
 		ContentFilters: []*pb.FilterRequest_ContentFilter{{ContentTopic: topic1}, {ContentTopic: topic2}},
 	}
 	subs.Append(Subscriber{peerId, "request_1", request})
-	subs.RemoveContentFilters(peerId, []*pb.FilterRequest_ContentFilter{{ContentTopic: "topic1"}})
+	subs.RemoveContentFilters(peerId, []*pb.FilterRequest_ContentFilter{{ContentTopic: topic1}})
 
 	var hasMatch bool
-	for sub := range subs.Items(&topic1) {
+	for sub := range subs.Items(&topic2) {
 		hasMatch = true
 		assert.Len(t, sub.filter.ContentFilters, 1)
 	}
