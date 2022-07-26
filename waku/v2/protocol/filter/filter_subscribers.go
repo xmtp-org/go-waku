@@ -132,7 +132,7 @@ func (sub *Subscribers) RemoveContentFilters(peerID peer.ID, contentFilters []*p
 			for i, cf := range subCfs {
 				if cf.ContentTopic == contentFilter.ContentTopic {
 					l := len(subCfs) - 1
-					subCfs[l], subCfs[i] = subCfs[i], subCfs[l]
+					subCfs[i] = subCfs[l]
 					subscriber.filter.ContentFilters = subCfs[:l]
 				}
 			}
