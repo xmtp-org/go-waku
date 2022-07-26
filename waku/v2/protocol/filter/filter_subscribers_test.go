@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/test"
 	"github.com/status-im/go-waku/waku/v2/protocol/pb"
 	"github.com/stretchr/testify/assert"
@@ -11,10 +12,15 @@ import (
 
 const TOPIC = "/test/topic"
 
-func TestAppend(t *testing.T) {
-	subs := NewSubscribers(10 * time.Second)
+func createPeerId(t *testing.T) peer.ID {
 	peerId, err := test.RandPeerID()
 	assert.NoError(t, err)
+	return peerId
+}
+
+func TestAppend(t *testing.T) {
+	subs := NewSubscribers(10 * time.Second)
+	peerId := createPeerId(t)
 	contentTopic := "topic1"
 	request := pb.FilterRequest{
 		Subscribe:      true,
@@ -32,8 +38,7 @@ func TestAppend(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	subs := NewSubscribers(10 * time.Second)
-	peerId, err := test.RandPeerID()
-	assert.NoError(t, err)
+	peerId := createPeerId(t)
 	contentTopic := "topic1"
 	request := pb.FilterRequest{
 		Subscribe:      true,
@@ -52,8 +57,7 @@ func TestRemove(t *testing.T) {
 
 func TestRemovePartial(t *testing.T) {
 	subs := NewSubscribers(10 * time.Second)
-	peerId, err := test.RandPeerID()
-	assert.NoError(t, err)
+	peerId := createPeerId(t)
 	topic1 := "topic1"
 	topic2 := "topic2"
 	request := pb.FilterRequest{
@@ -74,8 +78,7 @@ func TestRemovePartial(t *testing.T) {
 
 func TestRemoveBogus(t *testing.T) {
 	subs := NewSubscribers(10 * time.Second)
-	peerId, err := test.RandPeerID()
-	assert.NoError(t, err)
+	peerId := createPeerId(t)
 	contentTopic := "topic1"
 	request := pb.FilterRequest{
 		Subscribe:      true,
