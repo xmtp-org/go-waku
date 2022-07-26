@@ -18,6 +18,13 @@ func createPeerId(t *testing.T) peer.ID {
 	return peerId
 }
 
+func firstSubscriber(subs *Subscribers, contentTopic string) *Subscriber {
+	for sub := range subs.Items(&contentTopic) {
+		return &sub
+	}
+	return nil
+}
+
 func TestAppend(t *testing.T) {
 	subs := NewSubscribers(10 * time.Second)
 	peerId := createPeerId(t)
@@ -29,11 +36,8 @@ func TestAppend(t *testing.T) {
 	}
 	subs.Append(Subscriber{peerId, "request_1", request})
 
-	var hasMatch bool
-	for range subs.Items(&contentTopic) {
-		hasMatch = true
-	}
-	assert.True(t, hasMatch)
+	sub := firstSubscriber(subs, contentTopic)
+	assert.NotNil(t, sub)
 }
 
 func TestRemove(t *testing.T) {
@@ -48,11 +52,8 @@ func TestRemove(t *testing.T) {
 	subs.Append(Subscriber{peerId, "request_1", request})
 	subs.RemoveContentFilters(peerId, request.ContentFilters)
 
-	var hasMatch bool
-	for range subs.Items(&contentTopic) {
-		hasMatch = true
-	}
-	assert.False(t, hasMatch)
+	sub := firstSubscriber(subs, contentTopic)
+	assert.Nil(t, sub)
 }
 
 func TestRemovePartial(t *testing.T) {
@@ -68,12 +69,9 @@ func TestRemovePartial(t *testing.T) {
 	subs.Append(Subscriber{peerId, "request_1", request})
 	subs.RemoveContentFilters(peerId, []*pb.FilterRequest_ContentFilter{{ContentTopic: topic1}})
 
-	var hasMatch bool
-	for sub := range subs.Items(&topic2) {
-		hasMatch = true
-		assert.Len(t, sub.filter.ContentFilters, 1)
-	}
-	assert.True(t, hasMatch)
+	sub := firstSubscriber(subs, topic2)
+	assert.NotNil(t, sub)
+	assert.Len(t, sub.filter.ContentFilters, 1)
 }
 
 func TestRemoveBogus(t *testing.T) {
@@ -88,9 +86,6 @@ func TestRemoveBogus(t *testing.T) {
 	subs.Append(Subscriber{peerId, "request_1", request})
 	subs.RemoveContentFilters(peerId, []*pb.FilterRequest_ContentFilter{{ContentTopic: "does not exist"}, {ContentTopic: contentTopic}})
 
-	var hasMatch bool
-	for range subs.Items(&contentTopic) {
-		hasMatch = true
-	}
-	assert.False(t, hasMatch)
+	sub := firstSubscriber(subs, contentTopic)
+	assert.Nil(t, sub)
 }
