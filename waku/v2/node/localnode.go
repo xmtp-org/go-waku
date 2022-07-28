@@ -48,11 +48,13 @@ func (w *WakuNode) newLocalnode(priv *ecdsa.PrivateKey, wsAddr []ma.Multiaddr, i
 	for _, addr := range wsAddr {
 		p2p, err := addr.ValueForProtocol(ma.P_P2P)
 		if err != nil {
+			db.Close()
 			return nil, err
 		}
 
 		p2pAddr, err := ma.NewMultiaddr("/p2p/" + p2p)
 		if err != nil {
+			db.Close()
 			return nil, fmt.Errorf("could not create p2p addr: %w", err)
 		}
 
@@ -226,8 +228,16 @@ func (w *WakuNode) setupENR(addrs []ma.Multiaddr) error {
 			return err
 		} else {
 			if w.localNode == nil || w.localNode.Node().String() != localNode.Node().String() {
+				existingLocalNode := w.localNode
 				w.localNode = localNode
+				if existingLocalNode != nil {
+					existingLocalNode.Database().Close()
+				}
 				w.log.Info("enr record", logging.ENode("enr", w.localNode.Node()))
+			} else {
+				// If the new localNode isn't assigned to the waku node,
+				// then it won't be cleaned up, so close the DB here.
+				localNode.Database().Close()
 			}
 		}
 	}
