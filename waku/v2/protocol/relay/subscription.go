@@ -16,6 +16,7 @@ type Subscription struct {
 	closed bool
 	once   sync.Once
 	quit   chan struct{}
+	wg     sync.WaitGroup
 }
 
 // Unsubscribe will close a subscription from a pubsub topic. Will close the message channel
@@ -23,7 +24,7 @@ func (subs *Subscription) Unsubscribe() {
 	subs.once.Do(func() {
 		close(subs.quit)
 	})
-
+	subs.wg.Wait()
 }
 
 // IsClosed determine whether a Subscription is still open for receiving messages
