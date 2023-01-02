@@ -52,3 +52,22 @@ func TestWakuRelay(t *testing.T) {
 
 	<-ctx.Done()
 }
+
+func TestWakuRelay_Unsubscribe(t *testing.T) {
+	testTopic := "/waku/2/go/relay/test"
+
+	port, err := tests.FindFreePort(t, "", 5)
+	require.NoError(t, err)
+
+	host, err := tests.MakeHost(context.Background(), port, rand.Reader)
+	require.NoError(t, err)
+
+	relay, err := NewWakuRelay(context.Background(), host, nil, 0, timesource.NewDefaultClock(), utils.Logger())
+	defer relay.Stop()
+	require.NoError(t, err)
+
+	sub, err := relay.SubscribeToTopic(context.Background(), testTopic)
+	require.NoError(t, err)
+
+	sub.Unsubscribe()
+}

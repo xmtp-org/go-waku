@@ -247,6 +247,7 @@ func (w *WakuRelay) SubscribeToTopic(ctx context.Context, topic string) (*Subscr
 		w.bcaster.Register(&topic, subscription.C)
 	}
 
+	subscription.wg.Add(1)
 	go w.subscribeToTopic(ctx, topic, subscription, sub)
 
 	return subscription, nil
@@ -308,6 +309,8 @@ func (w *WakuRelay) nextMessage(ctx context.Context, sub *pubsub.Subscription) <
 }
 
 func (w *WakuRelay) subscribeToTopic(ctx context.Context, t string, subscription *Subscription, sub *pubsub.Subscription) {
+	defer subscription.wg.Done()
+
 	ctx, err := tag.New(ctx, tag.Insert(metrics.KeyType, "relay"))
 	if err != nil {
 		w.log.Error("creating tag map", zap.Error(err))
@@ -319,13 +322,13 @@ func (w *WakuRelay) subscribeToTopic(ctx context.Context, t string, subscription
 	for {
 		select {
 		case <-subscription.quit:
+			if subscription.closed {
+				return
+			}
 			func(topic string) {
 				subscription.Lock()
 				defer subscription.Unlock()
 
-				if subscription.closed {
-					return
-				}
 				subscription.closed = true
 				if w.bcaster != nil {
 					<-w.bcaster.WaitUnregister(&topic, subscription.C) // Remove from broadcast list
