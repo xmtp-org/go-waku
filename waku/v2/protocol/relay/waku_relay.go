@@ -86,7 +86,7 @@ func NewWakuRelay(ctx context.Context, h host.Host, bcaster v2.Broadcaster, minP
 		},
 	))
 
-	ps, err := pubsub.NewGossipSub(w.ctx, h, opts...)
+	ps, err := pubsub.NewFloodSub(w.ctx, h, opts...)
 	if err != nil {
 		return nil, err
 	}
